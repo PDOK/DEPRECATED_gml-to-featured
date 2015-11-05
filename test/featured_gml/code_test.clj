@@ -8,7 +8,7 @@
     (is (= ((deftranslator :random111 []) {}) {:_action :random111}))))
 
 (def auto-name
-  '(deftranslator :new
+  `(deftranslator :new
     [:test-selector]))
 
 (deftest auto-name-test
@@ -22,7 +22,7 @@
 
 
 (def define-name
-  '(deftranslator :new
+  `(deftranslator :new
      [[:target-key :selectorKey]]))
 
 (deftest define-name-test
@@ -38,7 +38,7 @@
   `[:selector])
 
 (def extension
-  '(deftranslator :new base
+  `(deftranslator :new base
      [:selector2]))
 
 (deftest extension-test
@@ -52,7 +52,7 @@
          (macroexpand extension)))))
 
 (def or-choice
-  '(deftranslator :new
+  `(deftranslator :new
      [[:choice [:A] [:B]]]))
 
 (deftest choiche-test
@@ -66,7 +66,7 @@
          (macroexpand or-choice)))))
 
 (def tag-replacement
-  '(deftranslator :new
+  `(deftranslator :new
      [[:target-key :s/tag]]))
 
 (deftest tag-replacement-test
@@ -79,7 +79,7 @@
          (macroexpand tag-replacement)))))
 
 (def function-append
-  '(deftranslator :new
+  `(deftranslator :new
      [[:target-key 'moment]]))
 
 
@@ -91,5 +91,5 @@
                   {:_action :new,
                    :target-key (clojure.core/->
                                 (featured-gml.xml/xml1-> zp :targetKey featured-gml.xml/text)
-                                moment)})))
+                                featured-gml.code/moment)})))
          (macroexpand function-append)))))
