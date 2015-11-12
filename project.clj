@@ -6,4 +6,6 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.1"]
-                 [cheshire "5.5.0"]])
+                 [cheshire "5.5.0"]]
+  :profiles {:test {:resource-paths ["dev-resources"]}
+             :dev {:resource-paths ["dev-resources"]}})

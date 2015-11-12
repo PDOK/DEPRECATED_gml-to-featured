@@ -64,4 +64,5 @@
 (def moment (function "moment"))
 
 (defn gml [inner]
-  {:type "gml" :gml inner})
+  (when inner
+    {:type "gml" :gml inner}))
