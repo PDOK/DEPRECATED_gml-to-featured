@@ -27,6 +27,6 @@
                   ["change" "version" "leiningen.release/bump-version"]
                   ["vcs" "commit"]
                   ["vcs" "push"]]
-
+  :aliases {"build" ["do" ["compile"] ["test"]]}
   :profiles {:test {:resource-paths ["dev-resources"]}
              :dev {:resource-paths ["dev-resources"]}})
