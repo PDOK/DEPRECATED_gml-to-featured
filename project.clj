@@ -1,4 +1,4 @@
-(defproject featured-gml "0.1.0-alpha1"
+(defproject featured-gml "0.1.0"
   :description "gml to featured json conversion lib"
   :url "http://github.so.kadaster.nl/PDOK/featured-gml"
   :license {:name "Eclipse Public License"
@@ -22,7 +22,7 @@
   :release-tasks [["vcs" "assert-committed"]
                   ["change" "version" "leiningen.release/bump-version" "release"]
                   ["vcs" "commit"]
-                  ["vcs" "tag" "--no-sign"]
+                  ["vcs" "tag" "" "--no-sign"]
                   ["deploy"]
                   ["change" "version" "leiningen.release/bump-version"]
                   ["vcs" "commit"]
