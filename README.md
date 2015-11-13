@@ -6,6 +6,12 @@ Translate gml to featured json lib code
 
 TODO
 
+## Building
+```lein build```
+
+## Releasing
+export ```RELEASE_LEVEL```, ```NEXUS_USERNAME``` and ```NEXUS_PASSWORD``` and run ```build.sh```
+
 ## License
 
 Copyright © 2015 PDOK
