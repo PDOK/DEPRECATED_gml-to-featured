@@ -1,4 +1,4 @@
-(defproject featured-gml "0.1.2-SNAPSHOT"
+(defproject featured-gml "0.1.2"
   :description "gml to featured json conversion lib"
   :url "http://github.so.kadaster.nl/PDOK/featured-gml"
   :license {:name "Eclipse Public License"
