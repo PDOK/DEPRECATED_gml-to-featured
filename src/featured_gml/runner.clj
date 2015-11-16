@@ -25,7 +25,7 @@
        (pmap member->map)
        (filter #(not= unknown %))))
 
-(defn process-file [in out dataset-name]
+(defn process [in out dataset-name]
   (let [first? (ref true)]
     (with-open [reader (clojure.java.io/reader in)
                 writer (clojure.java.io/writer out)]
@@ -35,4 +35,5 @@
           (.write writer ",\n")
           (dosync (ref-set first? false)))
         (.write writer (json/generate-string f)))
-      (.write writer "]}"))))
+      (.write writer "]}")))
+  (shutdown-agents))
