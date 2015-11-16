@@ -10,7 +10,9 @@ TODO
 ```lein build```
 
 ## Releasing
-export ```RELEASE_LEVEL```, ```NEXUS_USERNAME``` and ```NEXUS_PASSWORD``` and run ```build.sh```
+Set ```RELEASE_LEVEL```, ```NEXUS_USERNAME``` and ```NEXUS_PASSWORD``` and run ```build.sh```
+
+```RELEASE_LEVEL``` one of: **:major**, **:minor**, **:patch**, **:alpha**, **:beta**, **:rc**
 
 ## License
 
