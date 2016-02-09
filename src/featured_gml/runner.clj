@@ -1,6 +1,9 @@
 (ns featured-gml.runner
   (:require [featured-gml.xml :as xml]
-            [cheshire.core :as json]))
+            [featured-gml.code :as code]
+            [clojure.edn :as edn]
+            [cheshire.core :as json])
+  (:gen-class))
 
 (def ^:dynamic *sequence-selector* :content)
 (def ^:dynamic *feature-selector* #(-> % :content first))
@@ -36,4 +39,38 @@
           (dosync (ref-set first? false)))
         (.write writer (json/generate-string f)))
       (.write writer "]}")))
-  (shutdown-agents))
+  (shutdown-agents)
+  )
+
+(defn parse-translator-tag [expr]
+  (eval (code/translator (:type expr) (:mapping expr))))
+
+(defn resolve-as-function [namespace function]
+  (ns-resolve *ns* (symbol (str namespace "/" (name function)))))
+
+(defn parse-fn-tag [kw]
+  (if-let [f (resolve-as-function "featured-gml.code" kw)]
+    f
+    identity))
+
+(defn parse-config [config]
+  (edn/read-string
+   {:readers {'pdok/translator parse-translator-tag
+              'pdok/fn parse-fn-tag}} config))
+
+(defn translate [dataset edn-config in out]
+  (let [translators (parse-config (slurp  edn-config))]
+    (binding [*translators* translators]
+      (process in out dataset))))
+
+;; "{:Gemeenten #pdok/translator {:type :new :mapping
+;;                    [[:_collection :s/tag clojure.string/lower-case]
+;;                     :Code
+;;                     :Gemeentenaam]}}"
+
+(defn -main
+  [& args]
+  (cond
+    (= 3 (count args)) (translate (nth args 0) (nth args 1) (nth args 2) *out*)
+    (= 4 (count args)) (translate (nth args 0) (nth args 1) (nth args 2) (nth args 3))
+    :else (println "Usage: .exe datasetname config.edn infile [outfile]")))
