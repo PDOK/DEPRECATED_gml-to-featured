@@ -2,7 +2,9 @@
   (:require [featured-gml.xml :as xml]
             [featured-gml.code :as code]
             [clojure.edn :as edn]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [clojure.tools.cli :refer [parse-opts]]
+            [clojure.string :as string])
   (:gen-class))
 
 (def ^:dynamic *sequence-selector* :content)
@@ -68,9 +70,47 @@
 ;;                     :Code
 ;;                     :Gemeentenaam]}}"
 
-(defn -main
-  [& args]
-  (cond
-    (= 3 (count args)) (translate (nth args 0) (nth args 1) (nth args 2) *out*)
-    (= 4 (count args)) (translate (nth args 0) (nth args 1) (nth args 2) (nth args 3))
-    :else (println "Usage: .exe datasetname config.edn infile [outfile]")))
+(defn error-msg [errors]
+  (str "The following errors occurred while parsing your command:\n\n"
+       (string/join \newline errors)))
+
+(defn exit [status msg]
+  (println msg)
+  (System/exit status))
+
+(defn implementation-version []
+(->> "project.clj"
+     slurp
+     read-string
+     (drop 2)
+     (cons :version)
+     (apply hash-map)
+     (:version)))
+
+(defn usage [options-summary]
+  (->> ["This program converts xml to featured-ready json. The conversion is done using the provided mappingconfig(uration) specified in edn."
+        ""
+        "Usage: xml2featured [options] datasetname mappingconfig inputxml outputfile "
+        ""
+        "Options:"
+        options-summary
+        ""
+        "Please refer to the manual page for more information."]
+       (string/join \newline)))
+
+(def cli-options
+  [["-h" "--help"]
+   ["-v" "--version"]])
+
+(defn -main [& args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    ;; Handle help and error conditions
+    (cond
+      (:help options) (exit 0 (usage summary))
+       (:version options) (exit 0 (implementation-version))
+      (not= (count arguments) 4) (exit 1 (usage summary))
+      errors (exit 1 (error-msg errors)))
+    ;; Execute program with options
+    (if (= 4 (count args))
+     (translate (nth args 0) (nth args 1) (nth args 2) (nth args 3))
+     (exit 1 (usage summary)))))
