@@ -4,7 +4,8 @@
             [clojure.edn :as edn]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [clojure.tools.logging :as log])
   (:gen-class))
 
 (def ^:dynamic *sequence-selector* :content)
@@ -30,10 +31,9 @@
        (pmap member->map)
        (filter #(not= unknown %))))
 
-(defn process [in out dataset-name]
+(defn process [reader out dataset-name]
   (let [first? (ref true)]
-    (with-open [reader (clojure.java.io/reader in)
-                writer (clojure.java.io/writer out)]
+    (with-open [writer (clojure.java.io/writer out)]
       (.write writer (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
       (doseq [f (process-stream reader)]
         (if-not @first?
@@ -60,10 +60,15 @@
    {:readers {'pdok/translator parse-translator-tag
               'pdok/fn parse-fn-tag}} config))
 
-(defn translate [dataset edn-config in out]
-  (let [translators (parse-config (slurp  edn-config))]
+(defn translate [dataset edn-config reader out]
+  (let [translators (parse-config edn-config)]
+    (log/debug "Using translators:" translators)
     (binding [*translators* translators]
-      (process in out dataset))))
+      (process reader out dataset))))
+
+(defn translate-filesystem [dataset edn-config-location in-file out-file]
+  (with-open [reader (clojure.java.io/reader in-file)]
+    (translate dataset (slurp edn-config-location) reader out-file)))
 
 ;; "{:Gemeenten #pdok/translator {:type :new :mapping
 ;;                    [[:_collection :s/tag clojure.string/lower-case]
@@ -112,5 +117,5 @@
       errors (exit 1 (error-msg errors)))
     ;; Execute program with options
     (if (= 4 (count args))
-     (translate (nth args 0) (nth args 1) (nth args 2) (nth args 3))
+     (translate-filesystem (nth args 0) (nth args 1) (nth args 2) (nth args 3))
      (exit 1 (usage summary)))))

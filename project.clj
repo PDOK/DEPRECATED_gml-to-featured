@@ -12,7 +12,11 @@
                  [cheshire "5.5.0"]
                  [ring/ring-defaults "0.1.5"]
                  [ring/ring-json "0.3.1"]
-                 [compojure "1.4.0"]]
+                 [compojure "1.4.0"]
+                 [prismatic/schema "0.4.3"]
+                 [http-kit "2.1.18"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [log4j/log4j "1.2.17"]]
   :main ^:skip-aot featured-gml.runner
   :plugins [[lein-ring "0.9.7"]]
   :ring {:handler featured-gml.api/app}
