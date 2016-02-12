@@ -31,18 +31,15 @@
        (pmap member->map)
        (filter #(not= unknown %))))
 
-(defn process [reader out dataset-name]
+(defn process [reader writer dataset-name]
   (let [first? (ref true)]
-    (with-open [writer (clojure.java.io/writer out)]
-      (.write writer (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
-      (doseq [f (process-stream reader)]
-        (if-not @first?
-          (.write writer ",\n")
-          (dosync (ref-set first? false)))
-        (.write writer (json/generate-string f)))
-      (.write writer "]}")))
-  (shutdown-agents)
-  )
+    (.write writer (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
+    (doseq [f (process-stream reader)]
+      (if-not @first?
+        (.write writer ",\n")
+        (dosync (ref-set first? false)))
+      (.write writer (json/generate-string f)))
+    (.write writer "]}")))
 
 (defn parse-translator-tag [expr]
   (eval (code/translator (:type expr) (:mapping expr))))
@@ -60,15 +57,16 @@
    {:readers {'pdok/translator parse-translator-tag
               'pdok/fn parse-fn-tag}} config))
 
-(defn translate [dataset edn-config reader out]
+(defn translate [dataset edn-config reader writer]
   (let [translators (parse-config edn-config)]
-    (log/debug "Using translators:" translators)
     (binding [*translators* translators]
-      (process reader out dataset))))
+      (process reader writer dataset))))
 
 (defn translate-filesystem [dataset edn-config-location in-file out-file]
-  (with-open [reader (clojure.java.io/reader in-file)]
-    (translate dataset (slurp edn-config-location) reader out-file)))
+  (with-open [reader (clojure.java.io/reader in-file),
+              writer (clojure.java.io/writer out-file)]
+    (translate dataset (slurp edn-config-location) reader writer))
+  (shutdown-agents))
 
 ;; "{:Gemeenten #pdok/translator {:type :new :mapping
 ;;                    [[:_collection :s/tag clojure.string/lower-case]
