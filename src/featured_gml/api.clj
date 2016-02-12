@@ -42,7 +42,7 @@
         uuid fs/uuid]
       (download-and-translate-files dataset mapping uri workingdir)
       (log/debug "Transformation done and saved in" (.toString workingdir))
-      (let [zip-file (str fs/resultstore uuid ".zip")]
+      (let [zip-file (fs/determine-zip-name uuid)]
         (zip/zip-directory zip-file workingdir)
         (log/debug "Result zipped to " zip-file)
         (fs/delete-directory workingdir)
@@ -58,11 +58,20 @@
       {:status 500 :body "dataset, mapping and file are all required"}
       (process-xml2json req dataset mapping file))))
 
+(defn handle-delete-req [req]
+  "Delete the file referenced by req"
+  (let [uuid (:uuid (:params req))]
+    (log/debug "Delete requested of" uuid)
+    (if (fs/safe-delete (fs/determine-zip-name (str/trim uuid)))
+      (r/response {:status 200, :deleted uuid})
+      (r/response {:status 500, :not-deleted uuid}))))
+
 (defroutes handler
     (context "/api" []
              (GET "/info" [] (r/response {:version (runner/implementation-version)}))
              (GET "/ping" [] (r/response {:pong (tl/local-now)}))
-             (POST "/xml2json" request handle-xml2json-req))
+             (POST "/xml2json" request handle-xml2json-req)
+             (DELETE "/delete/:uuid" request handle-delete-req))
     (route/not-found "Unknown operation"))
 
 (def app

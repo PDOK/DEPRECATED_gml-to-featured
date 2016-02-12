@@ -13,7 +13,6 @@
       (io/copy f zip)
       (.closeEntry zip))))
 
-
 (defn extract-target-file-name [inputname]
   "Extract the target-file name for inputname"
   (str(last (re-find #"(\w+).(?:\w+)$" inputname)) ".json"))
