@@ -63,8 +63,8 @@
   (let [uuid (:uuid (:params req))]
     (log/debug "Delete requested of" uuid)
     (if (fs/safe-delete (fs/determine-zip-name (str/trim uuid)))
-      (r/response {:status 200, :deleted uuid})
-      (r/response {:status 500, :not-deleted uuid}))))
+      {:status 200, :deleted uuid}
+      {:status 500, :not-deleted uuid})))
 
 (defroutes handler
     (context "/api" []

@@ -54,8 +54,8 @@
 
 (defn parse-config [config]
   (edn/read-string
-   {:readers {'pdok/translator parse-translator-tag
-              'pdok/fn parse-fn-tag}} config))
+   {:readers {'xml2json/mappedcollection parse-translator-tag
+              'xml2json/fn parse-fn-tag}} config))
 
 (defn translate [dataset edn-config reader writer]
   (let [translators (parse-config edn-config)]
