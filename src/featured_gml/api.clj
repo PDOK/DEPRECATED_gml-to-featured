@@ -34,6 +34,7 @@
             (.closeEntry zipstream)))
         (translate-stream dataset mapping body (zip/target-file tmpdir uri))))))
 
+; TODO add edge cases (file cannot be downloaded, server not running, zip with failure, etc.)
 (defn process-xml2json [req dataset mapping uri]
   "Proces the request, zip the result in a zip on the filesystem and return a reference to this zip-file"
   (log/info "Going to transform \""dataset"\" using url" uri)
