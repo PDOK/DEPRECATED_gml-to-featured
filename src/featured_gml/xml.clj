@@ -24,8 +24,12 @@
 (defn tag [loc]
   ((fnil name "") (:tag (zip/node loc))))
 
+(defn attr-with-name [loc attrname]
+  "Get the attribute with attrname. Alternative implementation for attr"
+  (some #(if (= (.getLocalPart (.getName %)) attrname) (.getValue %)) (iterator-seq (:attrs (zip/node loc)))))
+
 (defn id-attr [loc]
-   (some #(if (= (.getLocalPart (.getName %)) "id") (.getValue %)) (iterator-seq (:attrs (zip/node loc)))))
+  (attr-with-name loc "id"))
 
 (defn attr
   "Returns the xml attribute named attrname, of the xml node at location loc."
