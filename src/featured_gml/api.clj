@@ -18,32 +18,32 @@
   org.joda.time.DateTime
   (to-json [t jg] (.writeString jg (str t))))
 
-(defn translate-stream [dataset mapping reader out-file]
+(defn translate-stream [dataset mapping validity reader out-file]
   "Read from reader, xml2json translate the content"
   (with-open [writer (io/writer out-file)]
-    (runner/translate dataset mapping reader writer)))
+    (runner/translate dataset mapping validity reader writer)))
 
 ; Futurework not safe result to file but back to a stream to improve performance
-(defn download-and-translate-files [dataset mapping uri tmpdir]
+(defn download-and-translate-files [dataset mapping validity uri tmpdir]
   "Download uri. If the file is a zip, extract all files in it"
   (let [{:keys [status body headers]} @(http-kit/get uri {:as :stream})]
     (if (< status 300)
       (if (= (:content-type headers) "application/zip")
         (with-open [zipstream (java.util.zip.ZipInputStream. body)]
           (doseq [e (zip/entries zipstream)]
-            (translate-stream dataset mapping zipstream (zip/target-file tmpdir (.getName e)))
+            (translate-stream dataset mapping validity zipstream (zip/target-file tmpdir (.getName e)))
             (.closeEntry zipstream)))
         (translate-stream dataset mapping body (zip/target-file tmpdir uri))))))
 
 ; TODO add edge cases (file cannot be downloaded, server not running, zip with failure, etc.)
-(defn process-xml2json [req dataset mapping uri]
+(defn process-xml2json [req dataset mapping uri validity]
   "Proces the request, zip the result in a zip on the filesystem and return a reference to this zip-file"
   (log/info "Going to transform \""dataset"\" using url" uri)
-  (let [workingdir fs/get-tmp-dir,
+  (let [workingdir (fs/get-tmp-dir),
         uuid fs/uuid]
-      (download-and-translate-files dataset mapping uri workingdir)
+      (download-and-translate-files dataset mapping validity uri workingdir)
       (log/debug "Transformation done and saved in" (.toString workingdir))
-      (let [zip-file (fs/determine-zip-name uuid)]
+      (let [zip-file (fs/determine-zip-location uuid)]
         (zip/zip-directory zip-file workingdir)
         (log/debug "Result zipped to " zip-file)
         (fs/delete-directory workingdir)
@@ -54,10 +54,11 @@
   "Get the properties from the request and start translating run iff all are provided"
   (let [dataset (:dataset (:body req))
         mapping (:mapping (:body req))
-        file (:file (:body req))]
-    (if (or (nil? dataset) (nil? mapping) (nil? file))
-      {:status 500 :body "dataset, mapping and file are all required"}
-      (process-xml2json req dataset mapping file))))
+        file (:file (:body req))
+        validity (:validity (:body req))]
+    (if (some str/blank? [dataset mapping file validity])
+      {:status 500 :body "dataset, mapping, file and validity are all required"}
+      (process-xml2json req dataset mapping file validity))))
 
 (defn handle-delete-req [req]
   "Delete the file referenced by req"
@@ -71,7 +72,7 @@
 (defn handle-getjson-req [req]
   "Stream a json file identified by uuid"
   (let [uuid (:uuid (:params req))]
-    (let [zip-filename (fs/determine-zip-name (str/trim uuid))
+    (let [zip-filename (fs/determine-zip-filename (str/trim uuid))
            zip-file (io/file  (fs/determine-zip-location (str/trim uuid)))]
       (if (.exists zip-file)
         {:headers {"Content-Description" "File Transfer"

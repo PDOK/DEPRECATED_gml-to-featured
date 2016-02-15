@@ -7,6 +7,7 @@
                           #(clojure.string/upper-case (second %1))))
 
 (def key->fn {:s/tag `[tag]
+              :s/id-attr `[id-attr]
               :s/inner-xml `[zip/down xml]
               })
 

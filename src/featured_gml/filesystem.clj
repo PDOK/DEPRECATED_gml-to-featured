@@ -28,7 +28,7 @@
       (safe-delete (.getPath file)))
     (safe-delete directory-path)))
 
-(def get-tmp-dir
+(defn get-tmp-dir []
   (.toFile (java.nio.file.Files/createTempDirectory "xml2json" default-attributes)))
 
 (defn determine-zip-filename [uuid]
