@@ -31,5 +31,8 @@
 (def get-tmp-dir
   (.toFile (java.nio.file.Files/createTempDirectory "xml2json" default-attributes)))
 
-(defn determine-zip-name [uuid]
-  (str resultstore uuid ".zip"))
+(defn determine-zip-filename [uuid]
+  (str uuid ".zip"))
+
+(defn determine-zip-location [uuid]
+  (str resultstore  (determine-zip-filename uuid)))

@@ -23,6 +23,7 @@
   (with-open [writer (io/writer out-file)]
     (runner/translate dataset mapping reader writer)))
 
+; Futurework not safe result to file but back to a stream to improve performance
 (defn download-and-translate-files [dataset mapping uri tmpdir]
   "Download uri. If the file is a zip, extract all files in it"
   (let [{:keys [status body headers]} @(http-kit/get uri {:as :stream})]
@@ -62,14 +63,29 @@
   "Delete the file referenced by req"
   (let [uuid (:uuid (:params req))]
     (log/debug "Delete requested of" uuid)
-    (if (fs/safe-delete (fs/determine-zip-name (str/trim uuid)))
+    (if (fs/safe-delete (fs/determine-zip-location (str/trim uuid)))
       {:status 200, :deleted uuid}
-      {:status 500, :not-deleted uuid})))
+      {:status 500, :body "No such file"})))
+
+; Possible add access constrains to file
+(defn handle-getjson-req [req]
+  "Stream a json file identified by uuid"
+  (let [uuid (:uuid (:params req))]
+    (let [zip-filename (fs/determine-zip-name (str/trim uuid))
+           zip-file (io/file  (fs/determine-zip-location (str/trim uuid)))]
+      (if (.exists zip-file)
+        {:headers {"Content-Description" "File Transfer"
+                          "Content-type" "application/octet-stream"
+                          "Content-Disposition" (str "attachment;filename=" zip-filename)
+                          "Content-Transfer-Encoding" "binary"}
+         :body zip-file}
+        {:status 500, :body "No such file"}))))
 
 (defroutes handler
     (context "/api" []
              (GET "/info" [] (r/response {:version (runner/implementation-version)}))
              (GET "/ping" [] (r/response {:pong (tl/local-now)}))
+             (GET "/get/:uuid" request handle-getjson-req)
              (POST "/xml2json" request handle-xml2json-req)
              (DELETE "/delete/:uuid" request handle-delete-req))
     (route/not-found "Unknown operation"))
