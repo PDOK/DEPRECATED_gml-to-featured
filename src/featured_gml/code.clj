@@ -8,8 +8,7 @@
 
 (def key->fn {:s/tag `[tag]
               :s/id-attr `[id-attr]
-              :s/inner-xml `[zip/down xml]
-              })
+              :s/inner-gml `[inner-gml]})
 
 (defn parse-selector-vector [key selector]
   (let [;; convert tags to fn, do use them in de xml1-> selector
@@ -64,6 +63,7 @@
 
 (def moment (function "moment"))
 
-(defn gml [inner]
-  (when inner
-    {:type "gml" :gml inner}))
+(defn inner-gml [input]
+  (let [inner (zip/down input)]
+    (when inner
+      {:type "gml" :gml (xml inner)})))

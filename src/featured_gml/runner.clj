@@ -47,15 +47,9 @@
 (defn resolve-as-function [namespace function]
   (ns-resolve *ns* (symbol (str namespace "/" (name function)))))
 
-(defn parse-fn-tag [kw]
-  (if-let [f (resolve-as-function "featured-gml.code" kw)]
-    f
-    identity))
-
 (defn parse-config [config]
   (edn/read-string
-   {:readers {'xml2json/mappedcollection parse-translator-tag
-              'xml2json/fn parse-fn-tag}} config))
+   {:readers {'xml2json/mappedcollection parse-translator-tag}} config))
 
 (defn translate [dataset edn-config validity reader writer]
   (let [translators (parse-config edn-config)]

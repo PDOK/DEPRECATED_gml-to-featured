@@ -16,7 +16,7 @@
 
 (def optional-gml-translator
   (deftranslator :new
-    [[:result [:first :s/inner-xml gml] [:second :s/inner-xml gml]]]))
+    [[:result [:first :s/inner-gml] [:second :s/inner-gml]]]))
 
 (deftest optional-selector
   (testing "first is selected"
