@@ -77,8 +77,12 @@
     (let [store-location (fs/determine-store-location uuid)]
       (log/debug "Delete requested of" store-location)
       (if (fs/delete-directory store-location)
-        {:status 200}
-        {:status 500, :body "No such file"}))))
+        (do
+          (log/info uuid "deleted")
+          {:status 200})
+         (do
+          (log/warn uuid "deleted failed. No such file?")
+           {:status 500, :body "No such file"})))))
 
 (defn handle-getjson-req [req]
   "Stream a json file identified by uuid"

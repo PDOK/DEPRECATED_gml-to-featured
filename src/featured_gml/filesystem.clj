@@ -21,7 +21,6 @@
   (if (.exists (io/file file-path))
     (try
       (clojure.java.io/delete-file file-path)
-      (log/debug "Deleted file" (.getName file-path))
       (catch Exception e (str "exception: " (.getMessage e))))
     false))
 
