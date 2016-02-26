@@ -25,6 +25,7 @@
 
 (defn translate-zipstream [dataset mapping validity zipstream workingdir entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
+  (log/debug "Going to transform zip-entry" (.getName entry))
   (let [resulting-file (fs/target-file workingdir (.getName entry))]
     (translate-stream dataset mapping validity zipstream resulting-file)
     (.closeEntry zipstream)
@@ -53,9 +54,9 @@
   (let [uuid (fs/uuid)
         dir-in-store (fs/determine-store-location uuid)]
     (.mkdir (java.io.File. dir-in-store))
-    (log/debug "Store-directory" (.toString dir-in-store))
+    (log/info "Storing files in" (.toString dir-in-store))
     (let [unzipped-files (download-and-translate-files dataset mapping validity uri dir-in-store)]
-      (log/info "Transformation done in store-directory")
+      (log/debug "Transformation of"(count unzipped-files) "file(s) done")
       (let [zipped-files (zip/zip-files-in-directory dir-in-store)]
         (log/info "Zipped" (count zipped-files) "file(s) in store-directory")
         (fs/delete-files unzipped-files)
