@@ -1,6 +1,9 @@
 (ns featured-gml.filesystem
   (:require [clojure.java.io :as io]
-            [environ.core :refer [env]]))
+            [clojure.tools.logging :as log]
+            [environ.core :refer [env]]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]))
 
 (def default-attributes (make-array java.nio.file.attribute.FileAttribute 0))
 
@@ -11,13 +14,14 @@
       (str path separator)
       path)))
 
-(def uuid
+(defn uuid []
   (str (java.util.UUID/randomUUID)))
 
 (defn safe-delete [file-path]
   (if (.exists (io/file file-path))
     (try
       (clojure.java.io/delete-file file-path)
+      (log/debug "Deleted file" (.getName file-path))
       (catch Exception e (str "exception: " (.getMessage e))))
     false))
 
@@ -28,11 +32,27 @@
       (safe-delete (.getPath file)))
     (safe-delete directory-path)))
 
+(defn delete-files [files]
+  (doseq [file files]
+    (safe-delete file)))
+
 (defn get-tmp-dir []
   (.toFile (java.nio.file.Files/createTempDirectory "xml2json" default-attributes)))
 
-(defn determine-zip-filename [uuid]
-  (str uuid ".zip"))
+(def custom-formatter
+   (time-format/with-zone
+     (time-format/formatter "yyyyMMddHHmm")
+     (time/default-time-zone)))
 
-(defn determine-zip-location [uuid]
-  (str resultstore  (determine-zip-filename uuid)))
+(def time-now
+  (time-format/unparse custom-formatter (time/now)))
+
+(defn determine-store-location [uuid]
+  (str resultstore uuid))
+
+(defn extract-target-file-name [inputname]
+  "Extract the target-file name for inputname"
+  (str time-now "_" (last (re-find #"(\w+).(?:\w+)$" inputname)) ".json"))
+
+(defn target-file [storedir inputname]
+  (io/file storedir (extract-target-file-name inputname)))

@@ -1,6 +1,7 @@
 (ns featured-gml.zip
   (:require [clojure.java.io :as io]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log],
+            [clj-time.format :as time-format]))
 
 (defn entries [zipfile]
  (lazy-seq
@@ -18,7 +19,7 @@
 (defn zip-file [uncompressed-file]
   "Return zip-file location with zipped content of uncompressed-file"
   (let [compressed-file (io/file (.getParent uncompressed-file) (str (.getName uncompressed-file) ".zip"))]
-    (log/debug "Compressing file" zip-file)
+    (log/debug "Compressing file" (.getName uncompressed-file))
     (with-open [zip (java.util.zip.ZipOutputStream. (io/output-stream compressed-file))]
       (.putNextEntry zip (java.util.zip.ZipEntry. (.getName uncompressed-file)))
       (io/copy uncompressed-file zip)
@@ -27,11 +28,5 @@
 
 (defn zip-files-in-directory [dir]
   "Zip each file in a directory separately"
-  (map #(zip-file %) (filter #(.isFile %) (file-seq (io/file dir)))))
-
-(defn extract-target-file-name [inputname]
-  "Extract the target-file name for inputname"
-  (str(last (re-find #"(\w+).(?:\w+)$" inputname)) ".json"))
-
-(defn target-file [tmpdir inputname]
-  (io/file tmpdir (extract-target-file-name inputname)))
+  (doall
+    (map #(zip-file %) (filter #(.isFile %) (file-seq (io/file dir))))))
