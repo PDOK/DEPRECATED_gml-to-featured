@@ -7,10 +7,10 @@ The resulting files are stored on the system in the directory set by the propert
 ## Example usage
 
 # Starting a run
-Do a POST to api/xml2json with the following body
-
+Do a POST to api/xml2json with the following body. Note this mapping is stored in the catalogus. 
+```json
 {
-    "dataset" : "test",
+    "dataset" : "bestuurlijkegrenzen",
     "mapping" : "{:Gemeenten #xml2json/mappedcollection {:type :new :mapping
                     [
                      [:_id :s/id-attr]
@@ -38,8 +38,10 @@ Do a POST to api/xml2json with the following body
     "file" : "http://localhost:8084/201502.zip",
     "validity": "2013-10-21T13:28:06.419Z"
 }
+```
 
 A successfull response looks like:
+```json
 {
   "uuid": "dbd8f349-2d82-434e-9792-57cfe4f97076",
   "json-files": [
@@ -48,6 +50,7 @@ A successfull response looks like:
     "201602261324_Gemeentegrenzen.json.zip"
   ]
 }
+```
 
 # Getting the result
 Use the UUID and a json-file name in a GET request. Example: "/api/get/dbd8f349-2d82-434e-9792-57cfe4f97076/201602261324_Landsgrens.json.zip"
