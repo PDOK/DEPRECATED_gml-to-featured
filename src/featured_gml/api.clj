@@ -105,7 +105,7 @@
              (GET "/get/:uuid/:file" request handle-getjson-req)
              (POST "/xml2json" request handle-xml2json-req)
              (DELETE "/delete/:uuid" request handle-delete-req))
-    (route/not-found "Unknown operation"))
+    (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json or /api/delete"))
 
 (def app
   (-> handler

@@ -8,7 +8,7 @@
 (def default-attributes (make-array java.nio.file.attribute.FileAttribute 0))
 
 (def resultstore
-  (let [path (or (env :jsonstore) (System/getProperty "java.io.tmpdir")),
+  (let [path (or (env :featured-gml.jsonstore) (System/getProperty "java.io.tmpdir")),
         separator (System/getProperty "file.separator")]
     (if-not (.endsWith path separator)
       (str path separator)
