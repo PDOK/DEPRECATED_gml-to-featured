@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<udm.DeploymentPackage version="${RELEASE_VERSION}" application="pdok-featured">
+<udm.DeploymentPackage version="${RELEASE_VERSION}" application="pdok-featured-gml">
   <orchestrator>sequential-by-container</orchestrator>
   <satisfiesApprovalByChangemanager>true</satisfiesApprovalByChangemanager>
   <satisfiesChangeTicketNumber>${CHANGE_NUMBER}</satisfiesChangeTicketNumber>
@@ -21,7 +21,7 @@
         <entry key="DEFAULT-FATAL">{{logging.default-FATAL}}</entry>
       </logging>
     </tomcat.LoggingSpec>
-    <tomcat.War name="featured-war" file="featured.war">
+    <tomcat.War name="featured-gml-war" file="featured-gml.war">
       <tags />
       <scanPlaceholders>true</scanPlaceholders>
       <excludeFileNamesRegex>.*\.(jar|xsl|template)</excludeFileNamesRegex>
