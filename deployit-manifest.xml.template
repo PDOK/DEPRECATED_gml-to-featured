@@ -4,7 +4,7 @@
   <satisfiesApprovalByChangemanager>true</satisfiesApprovalByChangemanager>
   <satisfiesChangeTicketNumber>${CHANGE_NUMBER}</satisfiesChangeTicketNumber>
   <deployables>
-    <tomcat.LoggingSpec name="featuredLogging">
+    <tomcat.LoggingSpec name="featuredGmlLogging">
       <tags />
       <logging>
         <entry key="IGNORE-ERROR">{{logging.ignore-ERROR}}</entry>
