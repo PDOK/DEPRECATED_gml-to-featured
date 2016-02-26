@@ -34,17 +34,19 @@
 (defn download-and-translate-files [dataset mapping validity uri workingdir]
   "Download uri. If the file is a zip, extract all files in it"
   (let [{:keys [status body headers]} @(http-kit/get uri {:as :stream})]
-    (if (< status 300)
-      (if (= (:content-type headers) "application/zip")
-        (with-open [zipstream (java.util.zip.ZipInputStream. body)]
-          (doall
-            (map #(translate-zipstream dataset mapping validity zipstream workingdir %) (zip/entries zipstream))))
-        (let [resulting-file (fs/target-file workingdir uri)]
-          (do
-            (translate-stream dataset mapping validity body resulting-file)
-            [resulting-file]))))))
+    (if (nil? status)
+      (throw (Exception. (str "No response when trying to download: " uri )))
+      (if (< status 300)
+        (if (= (:content-type headers) "application/zip")
+          (with-open [zipstream (java.util.zip.ZipInputStream. body)]
+            (doall
+              (map #(translate-zipstream dataset mapping validity zipstream workingdir %) (zip/entries zipstream))))
+          (let [resulting-file (fs/target-file workingdir uri)]
+            (do
+              (translate-stream dataset mapping validity body resulting-file)
+              [resulting-file])))
+         (throw (Exception. (str "No success: Got a statuscode " status " when downloading " uri )))))))
 
-; TODO add edge cases (file cannot be downloaded, server not running, zip with failure, etc.)
 (defn process-xml2json [dataset mapping uri validity]
   "Proces the request, zip the result in a zip on the filesystem and return a reference to this zip-file"
   (log/info "Going to transform dataset"dataset"using url" uri)
@@ -107,7 +109,16 @@
              (DELETE "/delete/:uuid" request handle-delete-req))
     (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json or /api/delete"))
 
+(defn wrap-exception-handling
+  [handler]
+  (fn [request]
+    (try
+      (handler request)
+      (catch Exception e
+        {:status 400 :body (.getMessage e)}))))
+
 (def app
   (-> handler
      (middleware/wrap-json-body {:keywords? true})
-      middleware/wrap-json-response))
+      middleware/wrap-json-response
+      wrap-exception-handling))
