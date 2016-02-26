@@ -58,7 +58,7 @@ Use the UUID and a json-file name in a GET request. Example:
 /api/get/dbd8f349-2d82-434e-9792-57cfe4f97076/201602261324_Landsgrens.json.zip
 ```
 # Clean up data once done
-Use the UUID in a delete request. Example: 
+Use the UUID in a DELETE request. Example: 
 ```
 /api/delete/dbd8f349-2d82-434e-9792-57cfe4f97076
 ```
