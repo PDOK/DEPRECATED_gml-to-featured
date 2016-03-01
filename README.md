@@ -66,11 +66,6 @@ Use the UUID in a DELETE request. Example:
 ## Building
 ```lein build```
 
-## Releasing
-Set ```RELEASE_LEVEL```, ```NEXUS_USERNAME``` and ```NEXUS_PASSWORD``` and run ```build.sh```
-
-```RELEASE_LEVEL``` one of: **:major**, **:minor**, **:patch**, **:alpha**, **:beta**, **:rc**
-
 ## License
 
 Copyright © 2015 PDOK
