@@ -35,14 +35,17 @@
 (defn download-and-translate-files [dataset mapping validity uri workingdir]
   "Download uri. If the file is a zip, extract all files in it"
   (let [{:keys [status body headers]} @(http-kit/get uri {:as :stream})]
-    (if (nil? status)
-      (throw (Exception. (str "No response when trying to download: " uri )))
+    (if (nil? status)   
+      (throw (Exception. (str "No response when trying to download: " uri )))      
       (if (< status 300)
-        (if (= (:content-type headers) "application/zip")
-          (with-open [zipstream (java.util.zip.ZipInputStream. body)]
+        ; Searches the content-type header for the string zip, so it will match on
+        ; application/zip, application/x-zip-compressed, application/zip-compressed and so on.
+        ; Because different file servers will return different headers.
+        (if (= "zip" (re-find #"zip" (:content-type headers)))
+          (with-open [zipstream (java.util.zip.ZipInputStream. body)]           
             (doall
               (map #(translate-zipstream dataset mapping validity zipstream workingdir %) (zip/entries zipstream))))
-          (let [resulting-file (fs/target-file workingdir uri)]
+          (let [resulting-file (fs/target-file workingdir uri)]            
             (do
               (translate-stream dataset mapping validity body resulting-file)
               [resulting-file])))
