@@ -48,7 +48,8 @@
             [lein-filegen "0.1.0-SNAPSHOT"]]
   :ring {:handler featured-gml.api/app
          :uberwar-name ~uberwar-name}
-  :profiles {:uberjar {:aot :all}}
+  :profiles {:uberjar {:aot :all}
+             :test {:dependencies [[ring/ring-mock "0.3.0"]]}}
   :aliases {"build" ["do" ["clean"] ["compile"] ["test"] ["filegen"]
                       ["ring" "uberwar"]]}
   :filegen [{:data {:RELEASE_VERSION ~release-version :CHANGE_NUMBER ~change-number}
@@ -59,4 +60,4 @@
              :target "target/featured-gml.properties"}
             {:data ~(str release-version "(" git-ref ")")
              :template-fn #(str %1)
-             :target "src/main/resources/version"}])
+             :target "resources/version"}])

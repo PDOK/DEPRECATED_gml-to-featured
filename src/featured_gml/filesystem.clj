@@ -18,6 +18,7 @@
   (str (java.util.UUID/randomUUID)))
 
 (defn safe-delete [file-path]
+  (log/debug "Going to delete" file-path)
   (if (.exists (io/file file-path))
     (try
       (clojure.java.io/delete-file file-path)
@@ -32,8 +33,7 @@
     (safe-delete directory-path)))
 
 (defn delete-files [files]
-  (doseq [file files]
-    (safe-delete file)))
+  (map #(safe-delete %) files))
 
 (defn get-tmp-dir []
   (.toFile (java.nio.file.Files/createTempDirectory "xml2json" default-attributes)))
@@ -49,9 +49,5 @@
 (defn determine-store-location [uuid]
   (str resultstore uuid))
 
-(defn extract-target-file-name [inputname]
-  "Extract the target-file name for inputname"
-  (str time-now "_" (last (re-find #"(\w+).(?:\w+)$" inputname)) ".json"))
-
 (defn target-file [storedir inputname]
-  (io/file storedir (extract-target-file-name inputname)))
+  (io/file storedir (str time-now "_" inputname ".json")))

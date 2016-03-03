@@ -1,0 +1,24 @@
+{:Gemeenten #xml2json/mappedcollection {:type :new :mapping
+                    [
+                     [:_id :s/id-attr]
+                     [:_collection :s/tag clojure.string/lower-case]
+                     :Code
+                     :Gemeentenaam
+                      [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
+                     ]},
+ :Landsgrens #xml2json/mappedcollection {:type :new :mapping
+                    [
+                     [:_id :s/id-attr]
+                     [:_collection :s/tag clojure.string/lower-case]
+                     :Code
+                     :Landsnaam
+                      [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
+                     ]},
+ :Provincies #xml2json/mappedcollection {:type :new :mapping
+                    [
+                     [:_id :s/id-attr]
+                     [:_collection :s/tag clojure.string/lower-case]
+                     :Provincienaam
+                      [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
+                     ]}
+}
