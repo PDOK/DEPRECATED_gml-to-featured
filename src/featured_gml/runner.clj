@@ -104,8 +104,8 @@
     ;; Handle help and error conditions
     (cond
       (:help options) (exit 0 (usage summary))
-       (:version options) (exit 0 (implementation-version))
-      (not= (count arguments) 4) (exit 1 (usage summary))
+      (:version options) (exit 0 (implementation-version))
+      (not= (count arguments) 5) (exit 1 (usage summary))
       errors (exit 1 (error-msg errors)))
     ;; Execute program with options
     (if (= 5 (count args))
