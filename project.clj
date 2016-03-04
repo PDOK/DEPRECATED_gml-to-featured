@@ -34,6 +34,7 @@
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.1"]
                  [org.clojure/tools.cli "0.3.3"]
+                 [org.clojure/core.async "0.2.374"]
                  [cheshire "5.5.0"]
                  [ring/ring-defaults "0.1.5"]
                  [ring/ring-json "0.3.1"]

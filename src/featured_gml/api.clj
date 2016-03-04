@@ -11,6 +11,10 @@
             [org.httpkit.client :as http-kit]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
+            [clojure.core.async
+             :as a
+             :refer [>! <! >!! <!! go chan buffer close! thread
+                     alts! alts!! timeout]]
             [clojure.java.io :as io])
   (:gen-class))
 
@@ -73,22 +77,38 @@
          :json-files (map #(.getName %) zipped-files)}))))
 
 (defn process-xml2json [dataset mapping uri validity]
-  "Proces the request, zip the result in a zip on the filesystem and return a reference to this zip-file"
+  "Proces the request and  zip the result in a zip on the filesystem and return a reference to this zip-file"
   (let [result (download-file-as-stream uri)]
      (if (:download-error result)
       (r/response {:status 400 :body (:download-error result)})
-      (let [result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:dlstream result) (:filename result))]
-         (r/response result)))))
+      (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:dlstream result) (:filename result)))))
+
+(def xml2json-callback-chan (chan))
+
+(defn async-process-xml2json [callback-uri dataset mapping file validity]
+  "Async handling of xml2json. Will do a callback once completed on the provided callback-uri"
+  (go
+    (doall
+      (http-kit/post callback-uri {
+                                    :body (cheshire.core/generate-string (<! xml2json-callback-chan))
+                                    :headers {"content-type" "application/json"}})
+      (log/info "Async job complete. Callback done on" callback-uri)))
+  (>!! xml2json-callback-chan (process-xml2json dataset mapping file validity))
+  {:status 200 :body (str "Accepted will do callback on " callback-uri)})
 
 (defn handle-xml2json-req [req]
-  "Get the properties from the request and start translating run iff all are provided"
-  (let [dataset (:dataset (:body req))
-        mapping (:mapping (:body req))
-        file (:file (:body req))
-        validity (:validity (:body req))]
-    (if (some str/blank? [dataset mapping file validity])
-      {:status 500 :body "dataset, mapping, file and validity are all required"}
-      (process-xml2json dataset mapping file validity))))
+  "Get the properties from the request and start an sync or async xml2json operation (depending on if a callback-uri is provided)"
+  (r/response
+    (let [dataset (:dataset (:body req))
+          mapping (:mapping (:body req))
+          file (:file (:body req))
+          validity (:validity (:body req))
+          callback-uri (:callback-uri (:body req))]
+      (if (some str/blank? [dataset mapping file validity])
+        {:status 400 :body "dataset, mapping, file and validity are all required"}
+        (if callback-uri
+          (async-process-xml2json callback-uri dataset mapping file validity)
+          (process-xml2json dataset mapping file validity))))))
 
 (defn handle-delete-req [req]
   "Delete the file referenced by uuid"
