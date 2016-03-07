@@ -35,3 +35,14 @@
     (is (= "<Polygon xmlns=\"\"></Polygon>"
            (-> (translate-resource "optional-gml2.xml" :element optional-gml-translator) first :result :gml)))
     ))
+
+(def nested-translator
+  (deftranslator :new
+    [[:result-level1 [:level1]]
+     [:result-level2 [:info :level2]]]))
+
+(deftest nested-selector
+  (testing "nested input"
+    (let [translated (translate-resource "nested.xml" :element nested-translator)]
+      (is (= "bar" (-> translated first :result-level1)))
+      (is (= "foo" (-> translated first :result-level2))))))
