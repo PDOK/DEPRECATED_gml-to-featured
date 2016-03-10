@@ -43,6 +43,18 @@
 
 (deftest nested-selector
   (testing "nested input"
-    (let [translated (translate-resource "nested.xml" :element nested-translator)]
+    (let [translated (translate-resource "two-levels.xml" :element nested-translator)]
       (is (= "bar" (-> translated first :result-level1)))
       (is (= "foo" (-> translated first :result-level2))))))
+
+(deftest test-translate
+  (let [out (java.io.StringWriter.)]
+    (testing "translate"
+      (with-open [in (clojure.java.io/reader (clojure.java.io/resource "nested.xml"))]
+        (binding [*sequence-selector* :content
+                  *feature-selector* identity]
+          (translate "dataset-1" (slurp "dev-resources/nested-config.edn") "2016-01-01" in out))
+        (let [result (.toString out)]
+          (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))
+          (is (= true (boolean (re-find #"\"attr-k\":\"foo\"" result))))
+          (is (= true (boolean (re-find #"\"attr-l\":\{\"attr-xyz\":\"bar\"\}" result)))))))))

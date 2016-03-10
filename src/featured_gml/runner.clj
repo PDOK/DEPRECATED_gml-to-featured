@@ -44,12 +44,14 @@
 (defn parse-translator-tag [expr]
   (eval (code/translator (:type expr) (:mapping expr))))
 
-(defn resolve-as-function [namespace function]
-  (ns-resolve *ns* (symbol (str namespace "/" (name function)))))
+(defn parse-translator-nested-tag [mapping]
+  (eval (code/translator mapping)))
 
 (defn parse-config [config]
   (edn/read-string
-   {:readers {'xml2json/mappedcollection parse-translator-tag}} config))
+    {:readers {'xml2json/mappedcollection parse-translator-tag ;this reader-tag is deprecated
+               'xml2json/mapped           parse-translator-tag
+               'xml2json/nested           parse-translator-nested-tag}} config))
 
 (defn translate [dataset edn-config validity reader writer]
   (let [translators (parse-config edn-config)]
@@ -61,11 +63,6 @@
               writer (clojure.java.io/writer out-file)]
     (translate dataset (slurp edn-config-location) validity reader writer))
   (shutdown-agents))
-
-;; "{:Gemeenten #pdok/translator {:type :new :mapping
-;;                    [[:_collection :s/tag clojure.string/lower-case]
-;;                     :Code
-;;                     :Gemeentenaam]}}"
 
 (defn error-msg [errors]
   (str "The following errors occurred while parsing your command:\n\n"

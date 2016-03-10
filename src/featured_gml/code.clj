@@ -24,21 +24,31 @@
 (defn parse-selector [s]
   (if (vector? s)
     (let [[key & rest] s]
-      (if (vector? (first rest))
-        `[~key ~(into [] (map #(parse-selector-vector key %) rest))]
+      (cond
+        (vector? (first rest))
+         `[~key ~(into [] (map #(parse-selector-vector key %) rest))]
+        (fn? (first rest))
+          `[~key ~(first rest)]
+        :else
         `[~key [~(parse-selector-vector key rest)]]))
     `[~s [[[~(keyword (hyphenated->camel (name s))) text] nil]]]))
 
 (defn apply-translator [translators]
-  (letfn [(translate [[s f]] (if f
+  (letfn [;f is a function and will be executed on the selection (s); example f=s/uppercase
+          (translate [[s f]] (if f
                                   `(-> (xml1-> ~'zp ~@s) ~@f)
                                   `(xml1-> ~'zp ~@s)))]
-    (if (> (count translators) 1)
-      (let [ts (map translate translators)]
-        `(or ~@ts))
-      (translate (first translators)))))
+    (cond
+      (fn? translators)
+       `(~translators ~'feature)
+      (> (count translators) 1)
+        (let [ts (map translate translators)]
+          `(or ~@ts))
+      :else
+        (translate (first translators)))))
 
 (defn translator
+  ([selectors] (translator nil selectors))
   ([action selectors] (translator action [] selectors))
   ([action base selectors]
    (let [translators
@@ -47,7 +57,7 @@
      `(fn [~'feature]
         (let [~'zp (zip/xml-zip ~'feature)]
           ~(reduce (fn [acc [k t]] (assoc acc k (apply-translator t)))
-                   {:_action action} translators))))))
+                     (if action {:_action action} {}) translators))))))
 
 (defmacro deftranslator
   ([action selectors] (translator action selectors))

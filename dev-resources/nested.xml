@@ -1,7 +1,8 @@
 <toplevel>
   <element>
-    <level1>bar</level1>
-    <info><level2>foo</level2></info>
+    <test>
+      <first>foo</first>
+    </test>
+    <iets><second>bar</second></iets>
   </element>
 </toplevel>
-
