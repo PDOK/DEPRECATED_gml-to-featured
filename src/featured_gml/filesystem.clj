@@ -33,7 +33,8 @@
     (safe-delete directory-path)))
 
 (defn delete-files [files]
-  (map #(safe-delete %) files))
+  (doseq [file files]
+    (safe-delete file)))
 
 (defn get-tmp-dir []
   (.toFile (java.nio.file.Files/createTempDirectory "xml2json" default-attributes)))
