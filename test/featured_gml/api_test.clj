@@ -38,7 +38,7 @@
     (test-delete (:uuid result))))
 
 
-(deftest zip-file-µconverted-correctly
+(deftest zip-file-converted-correctly
   "Test if input-file api-test/bestuurlijkegrenzen.zip results in multiple zip files. Note does not test CONTENT of result"
   (let [mapping (slurp (io/resource "api-test/bestuurlijkegrenzen.edn"))
         input (io/input-stream (io/resource "api-test/bestuurlijkegrenzen.zip"))
