@@ -22,28 +22,37 @@
   org.joda.time.DateTime
   (to-json [t jg] (.writeString jg (str t))))
 
-(defn translate-file-from-stream [dataset mapping validity reader out-file]
+(defn- translate-file-from-stream [reader dataset mapping validity out-file]
   "Read from reader, xml2json translate the content"
   (with-open [writer (io/writer out-file)]
     (runner/translate dataset mapping validity reader writer)))
 
-(defn translate-file-from-zipstream [dataset mapping validity zipstream workingdir entry]
+(defn- translate-file-from-zipentry [dataset mapping validity zipstream workingdir entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
   (let [resulting-file (fs/target-file workingdir (.getName entry))]
     (log/debug "Going to transform zip-entry" (.getName entry) "to" (.getPath resulting-file))
-    (translate-file-from-stream dataset mapping validity zipstream resulting-file)
+    (translate-file-from-stream zipstream dataset mapping validity resulting-file)
     (.closeEntry zipstream)
     resulting-file))
 
+(defn- translate-from-zipstream [stream dataset mapping validity workingdir]
+  "Transforms entries in a zip file and returns a vector with the transformed files"
+  (with-open [zipstream (java.util.zip.ZipInputStream. stream)]
+    (into [] (map (partial translate-file-from-zipentry
+                              dataset
+                              mapping
+                              validity
+                              zipstream
+                              workingdir) (zip/entries zipstream)))))
+
+
 (defn translate-entire-stream [zipped stream dataset mapping validity workingdir original-filename]
+  "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if zipped
-    (with-open [zipstream (java.util.zip.ZipInputStream. stream)]
-        (assoc {} :transformed-files [(doall
-                                        (map #(translate-file-from-zipstream dataset mapping validity zipstream workingdir %) (zip/entries zipstream)))]))
-    (do
-      (let [target-filename  (fs/target-file workingdir original-filename)]
-        (translate-file-from-stream dataset mapping validity stream target-filename)
-        (assoc {} :transformed-files [target-filename])))))
+    (translate-from-zipstream stream dataset mapping validity workingdir)
+    (let [target-filename (fs/target-file workingdir original-filename)]
+      (do (translate-file-from-stream stream dataset mapping validity target-filename))
+      [target-filename])))
 
 (defn extract-name-from-uri [uri]
   "Extract the requested-path from an uri"
@@ -66,15 +75,20 @@
         dir-in-store (fs/determine-store-location uuid)]
     (.mkdir (java.io.File. dir-in-store))
     (log/info "Going to store files in" (.toString dir-in-store))
-    (let [transform-result (translate-entire-stream zipped data-stream datasetname mapping validity dir-in-store original-filename),
-          unzipped-files (:transformed-files transform-result)]
-      (log/debug "Transformation of"(count unzipped-files) "file(s) done")
-      (let [zipped-files (zip/zip-files-in-directory dir-in-store)]
-        (log/info "Zipped" (count zipped-files) "file(s) in store-directory")
-        (fs/delete-files unzipped-files)
-        (log/info "Unzipped files removed")
-        {:uuid uuid
-         :json-files (map #(.getName %) zipped-files)}))))
+    (let [unzipped-files (translate-entire-stream zipped
+                                                  data-stream
+                                                  datasetname
+                                                  mapping
+                                                  validity
+                                                  dir-in-store
+                                                  original-filename)
+          zipped-files (zip/zip-files-in-directory dir-in-store)]
+      (log/info "Transformation of"(count unzipped-files) "file(s) done")
+      (fs/delete-files unzipped-files)
+      (log/info "Unzipped files removed")
+      (log/info "Zipped" (count zipped-files) "file(s) in store-directory")
+      {:uuid       uuid
+       :json-files (map #(.getName %) zipped-files)})))
 
 (defn process-xml2json [dataset mapping uri validity]
   "Proces the request and  zip the result in a zip on the filesystem and return a reference to this zip-file"
@@ -83,20 +97,14 @@
       (r/response {:status 400 :body (:download-error result)})
       (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:dlstream result) (:filename result)))))
 
-(def xml2json-callback-chan (chan))
-
-(defn async-process-xml2json [callback-uri dataset mapping file validity]
+(defn async-process-xml2json [cc callback-uri dataset mapping file validity]
   "Async handling of xml2json. Will do a callback once completed on the provided callback-uri"
-  (go
-    (doall
-      (http-kit/post callback-uri {
-                                    :body (cheshire.core/generate-string (<! xml2json-callback-chan))
-                                    :headers {"content-type" "application/json"}})
-      (log/info "Async job complete. Callback done on" callback-uri)))
-  (>!! xml2json-callback-chan (process-xml2json dataset mapping file validity))
-  {:status 200 :body (str "Accepted will do callback on " callback-uri)})
+  (let [rc (thread (process-xml2json dataset mapping file validity))]
+    (go (>! cc [callback-uri (<! rc)]))
+    (log/info "Async job started. Callback will be done on" callback-uri)
+    {:status 200 :body (str "Accepted will do callback on " callback-uri)}))
 
-(defn handle-xml2json-req [req]
+(defn handle-xml2json-req [cc req]
   "Get the properties from the request and start an sync or async xml2json operation (depending on if a callback-uri is provided)"
   (r/response
     (let [dataset (:dataset (:body req))
@@ -107,7 +115,7 @@
       (if (some str/blank? [dataset mapping file validity])
         {:status 400 :body "dataset, mapping, file and validity are all required"}
         (if callback-uri
-          (async-process-xml2json callback-uri dataset mapping file validity)
+          (async-process-xml2json cc callback-uri dataset mapping file validity)
           (process-xml2json dataset mapping file validity))))))
 
 (defn handle-delete-req [req]
@@ -137,14 +145,15 @@
           :body local-file}
          {:status 500, :body "No such file"}))))
 
-(defroutes handler
-    (context "/api" []
-             (GET "/info" [] (r/response {:version (runner/implementation-version)}))
-             (GET "/ping" [] (r/response {:pong (tl/local-now)}))
-             (GET "/get/:uuid/:file" request handle-getjson-req)
-             (POST "/xml2json" request handle-xml2json-req)
-             (DELETE "/delete/:uuid" request handle-delete-req))
-    (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json or /api/delete"))
+(defn handler [cc]
+  (defroutes handler
+             (context "/api" []
+               (GET "/info" [] (r/response {:version (runner/implementation-version)}))
+               (GET "/ping" [] (r/response {:pong (tl/local-now)}))
+               (GET "/get/:uuid/:file" request handle-getjson-req)
+               (POST "/xml2json" request (partial handle-xml2json-req cc))
+               (DELETE "/delete/:uuid" request handle-delete-req))
+             (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json or /api/delete")))
 
 (defn wrap-exception-handling
   [handler]
@@ -155,8 +164,13 @@
         (log/error e)
         {:status 400 :body (.getMessage e)}))))
 
+(defn- callbacker [uri result]
+  (http-kit/post uri {:body (cheshire.core/generate-string result)
+                      :headers {"Content-Type" "application/json"}}))
 (def app
-  (-> handler
-     (middleware/wrap-json-body {:keywords? true})
-      middleware/wrap-json-response
-      wrap-exception-handling))
+  (let [cc (chan 10)]
+    (go (while true (apply callbacker (<! cc))))
+    (-> (handler cc)
+        (middleware/wrap-json-body {:keywords? true})
+        middleware/wrap-json-response
+        wrap-exception-handling)))
