@@ -47,7 +47,8 @@
   :main ^:skip-aot featured-gml.runner
   :plugins [[lein-ring "0.9.7"]
             [lein-filegen "0.1.0-SNAPSHOT"]]
-  :ring {:handler featured-gml.api/app
+  :ring {:port 4000
+	 :handler featured-gml.api/app
          :uberwar-name ~uberwar-name}
   :profiles {:uberjar {:aot :all}
              :test {:dependencies [[ring/ring-mock "0.3.0"]]}}
