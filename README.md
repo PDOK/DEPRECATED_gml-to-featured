@@ -45,7 +45,6 @@ There is both a synchronous and an asynchronous approach. **If in the POST reque
 A successfull response looks like:
 ```json
 {
-  "uuid": "dbd8f349-2d82-434e-9792-57cfe4f97076",
   "json-files": [
     "201602261324_Provinciegrenzen.json.zip",
     "201602261324_Landsgrens.json.zip",
@@ -55,15 +54,11 @@ A successfull response looks like:
 ```
 
 # Getting the result
-Use the UUID and a json-file name in a GET request. Example:
+Use the json-file name in a GET request. Example:
 ```
-/api/get/dbd8f349-2d82-434e-9792-57cfe4f97076/201602261324_Landsgrens.json.zip
+/api/get/201602261324_Landsgrens.json.zip
 ```
-# Clean up data once done
-Use the UUID in a DELETE request. Example: 
-```
-/api/delete/dbd8f349-2d82-434e-9792-57cfe4f97076
-```
+Files are available for 48 hours after they have been created using xml2json
 
 ## Building
 ```lein build```
