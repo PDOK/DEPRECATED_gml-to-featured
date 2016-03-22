@@ -1,6 +1,5 @@
 (ns featured-gml.filesystem
   (:require [clojure.java.io :as io]
-            [clojure.tools.logging :as log]
             [environ.core :refer [env]]
             [clj-time.core :as time]
             clj-time.coerce)
@@ -14,7 +13,6 @@
     path))
 
 (defn safe-delete [file-path]
-  (log/debug "Going to delete" file-path)
   (if (.exists (io/file file-path))
     (try
       (clojure.java.io/delete-file file-path)
