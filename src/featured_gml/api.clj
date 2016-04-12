@@ -133,7 +133,7 @@
                (GET "/ping" [] (r/response {:pong (tl/local-now)}))
                (GET "/get/:file" request handle-getjson-req)
                (POST "/xml2json" request (partial handle-xml2json-req cc)))
-             (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json or /api/delete")))
+             (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json")))
 
 (defn wrap-exception-handling
   [handler]
