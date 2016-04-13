@@ -1,4 +1,4 @@
-# featured-gml
+# featured-gml [![Build Status](https://travis-ci.org/PDOK/featured-gml.svg?branch=master)](https://travis-ci.org/PDOK/featured-gml)
 
 Translates xml/gml input to json files which can be handled by featured. 
 
