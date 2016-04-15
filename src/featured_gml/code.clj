@@ -34,10 +34,12 @@
     `[~s [[[~(keyword (hyphenated->camel (name s))) text] nil]]]))
 
 (defn apply-translator [translators]
-  (letfn [;f is a function and will be executed on the selection (s); example f=s/uppercase
+  (letfn [;f is a list of functions and will be executed on the selection (s); example f=s/uppercase
           (translate [[s f]] (if f
-                                  `(-> (xml1-> ~'zp ~@s) ~@f)
-                                  `(xml1-> ~'zp ~@s)))]
+                               (if (and (= 1 (count f)) (string? (first f)))
+                                 (first f)
+                                 `(-> (xml1-> ~'zp ~@s) ~@f))
+                               `(xml1-> ~'zp ~@s)))]
     (cond
       (fn? translators)
        `(~translators ~'feature)
