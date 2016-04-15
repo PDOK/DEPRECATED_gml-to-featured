@@ -73,13 +73,9 @@
   (System/exit status))
 
 (defn implementation-version []
-(->> "project.clj"
-     slurp
-     read-string
-     (drop 2)
-     (cons :version)
-     (apply hash-map)
-     (:version)))
+  (if-let [version (System/getProperty "featured-gml.version")]
+    version
+    (-> ^java.lang.Class (eval 'featured_gml.runner) .getPackage .getImplementationVersion)))
 
 (defn usage [options-summary]
   (->> ["This program converts xml to featured-ready json. The conversion is done using the provided mappingconfig(uration) specified in edn."
