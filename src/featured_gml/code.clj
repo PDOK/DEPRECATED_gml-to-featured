@@ -59,6 +59,9 @@
           ~(reduce (fn [acc [k t]] (assoc acc k (apply-translator t)))
                      (if action {:_action action} {}) translators))))))
 
+(defn multi [mappings]
+  (apply juxt mappings))
+
 (defmacro deftranslator
   ([action selectors] (translator action selectors))
   ([action base selectors] (translator action base selectors)))

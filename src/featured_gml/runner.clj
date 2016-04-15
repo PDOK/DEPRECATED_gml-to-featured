@@ -19,8 +19,11 @@
 
 (defn member->map [fm]
   (let [feature (*feature-selector* fm)
-        translator (get *translators* (:tag feature) unknown-translator)]
-    (translator feature)))
+        translator (get *translators* (:tag feature) unknown-translator)
+        translated (translator feature)]
+    (if (sequential? translated)
+      translated
+      [translated])))
 
 (defn process-stream [stream]
   (->> stream
@@ -28,7 +31,7 @@
        (xml/pull-seq)
        xml/event->tree
        *sequence-selector*
-       (pmap member->map)
+       (mapcat member->map)
        (filter #(not= unknown %))))
 
 (defn process [reader writer dataset-name validity]
@@ -47,11 +50,15 @@
 (defn parse-translator-nested-tag [mapping]
   (eval (code/translator mapping)))
 
+(defn parse-multi-tag [mappings]
+  (eval (code/multi mappings)))
+
 (defn parse-config [config]
   (edn/read-string
     {:readers {'xml2json/mappedcollection parse-translator-tag ;this reader-tag is deprecated
                'xml2json/mapped           parse-translator-tag
-               'xml2json/nested           parse-translator-nested-tag}} config))
+               'xml2json/nested           parse-translator-nested-tag
+               'xml2json/multi parse-multi-tag}} config))
 
 (defn translate [dataset edn-config validity reader writer]
   (let [translators (parse-config edn-config)]
