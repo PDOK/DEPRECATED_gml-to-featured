@@ -26,7 +26,7 @@
 
 (defn attr-with-name [loc attrname]
   "Get the attribute with attrname. Alternative implementation for attr"
-  (some #(if (= (.getLocalPart (.getName %)) attrname) (.getValue %)) (iterator-seq (:attrs (zip/node loc)))))
+  (some #(if (= (.getLocalPart (.getName %)) attrname) (.getValue %)) (:attrs (zip/node loc))))
 
 (defn id-attr [loc]
   (attr-with-name loc "id"))
@@ -144,10 +144,10 @@
     (fn [^XMLEvent event contents]
       (when (.isStartElement event)
         (let [start (.asStartElement event)]
-          {:tag (keyword (.getLocalPart (.getName start)))
-           :attrs (.getAttributes start)
+          {:tag     (keyword (.getLocalPart (.getName start)))
+           :attrs   (doall (iterator-seq (.getAttributes start)))
            :content contents
-           :raw event})))
+           :raw     event})))
     (fn [^XMLEvent event]
       (.isEndElement event))
     (fn [^XMLEvent event]

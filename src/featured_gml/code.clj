@@ -6,6 +6,13 @@
   (clojure.string/replace method-name #"-(\w)"
                           #(clojure.string/upper-case (second %1))))
 
+(defn add-meta [obj m]
+  (let [current-meta (meta obj)]
+    (with-meta obj (merge current-meta m))))
+
+(defn zip? [obj]
+  (:zip? (meta obj)))
+
 (def key->fn {:s/tag `[tag]
               :s/id-attr `[id-attr]
               :s/inner-gml `[inner-gml]})
@@ -57,12 +64,16 @@
          (for [s (concat (eval base) (eval selectors))]
            (parse-selector s))]
      `(fn [~'feature]
-        (let [~'zp (zip/xml-zip ~'feature)]
+        (let [~'zp (if (zip? ~'feature)
+                     ~'feature
+                     (zip/xml-zip ~'feature))]
           ~(reduce (fn [acc [k t]] (assoc acc k (apply-translator t)))
                      (if action {:_action action} {}) translators))))))
 
 (defn multi [mappings]
-  (apply juxt mappings))
+  (fn [feature]
+    (let [zipper (add-meta (zip/xml-zip feature) {:zip? true})]
+      ((apply juxt mappings) zipper))))
 
 (defmacro deftranslator
   ([action selectors] (translator action selectors))
