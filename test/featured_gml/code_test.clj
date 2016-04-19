@@ -15,7 +15,9 @@
   (testing "auto name with camelcase"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (clojure.zip/xml-zip feature)]
+                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                                        feature
+                                        (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :test-selector (featured-gml.xml/xml1-> zp :testSelector featured-gml.xml/text)})))
          (macroexpand auto-name)))))
@@ -29,7 +31,9 @@
   (testing "self defined selector"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (clojure.zip/xml-zip feature)]
+                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                                        feature
+                                        (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :target-key (featured-gml.xml/xml1-> zp :selectorKey featured-gml.xml/text)})))
          (macroexpand define-name)))))
@@ -45,7 +49,9 @@
   (testing "translator with base"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (clojure.zip/xml-zip feature)]
+                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                                        feature
+                                        (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :selector (featured-gml.xml/xml1-> zp :selector featured-gml.xml/text)
                    :selector2 (featured-gml.xml/xml1-> zp :selector2 featured-gml.xml/text)})))
@@ -59,7 +65,9 @@
   (testing "choice test"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (clojure.zip/xml-zip feature)]
+                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                                        feature
+                                        (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :choice (clojure.core/or (featured-gml.xml/xml1-> zp :A featured-gml.xml/text)
                                (featured-gml.xml/xml1-> zp :B featured-gml.xml/text))})))
@@ -73,7 +81,9 @@
   (testing "replace function tags"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (clojure.zip/xml-zip feature)]
+                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                                        feature
+                                        (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :target-key (featured-gml.xml/xml1-> zp featured-gml.xml/tag)})))
          (macroexpand tag-replacement)))))
@@ -87,7 +97,9 @@
   (testing "append function"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (clojure.zip/xml-zip feature)]
+                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                                        feature
+                                        (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :target-key (clojure.core/->
                                 (featured-gml.xml/xml1-> zp :targetKey featured-gml.xml/text)
