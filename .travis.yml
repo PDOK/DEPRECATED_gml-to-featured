@@ -3,3 +3,34 @@ language: clojure
 jdk:
 - oraclejdk7
 - oraclejdk8
+
+install:
+  - curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > $HOME/lein
+  - chmod u+x $HOME/lein
+
+script: $HOME/lein with-profile +$TYPE do test, build
+
+env:
+  - TYPE=cli
+  - TYPE=web-war
+  - TYPE=web-jar
+
+before_deploy:
+  - export VERSION=$(printf $(cat VERSION))
+
+deploy:
+  provider: releases
+  api_key: $GITHUB_OAUTH_TOKEN
+  file_glob: true
+  file:
+    - "target/featured-gml-$VERSION-*standalone.jar"
+    - "target/featured-gml-$VERSION-*web.jar"
+    - "target/featured-gml-$VERSION*.war"
+  skip_cleanup: true
+  on:
+    tags: true
+    jdk: oraclejdk7
+
+cache:
+  directories:
+  - $HOME/.m2

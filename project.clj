@@ -1,27 +1,13 @@
-(def feature-version (or (System/getenv "FEATURE_GML_VERSION") "0.1"))
-(def build-number (or (System/getenv "BUILD_NUMBER") "HANDBUILT"))
-(def change-number (or (System/getenv "CHANGE_NUMBER") "031415"))
-(def release-version (str feature-version "." build-number))
-(def project-name "featured-gml")
-(def uberjar-name (str project-name "-standalone.jar"))
-(def uberwar-name (str project-name ".war"))
+(def version (slurp "VERSION"))
+(def artifact-name (str "featured-gml-" version))
+(def uberjar-name (str artifact-name "-standalone.jar"))
+(def webjar-name (str artifact-name "-web.jar"))
+(def uberwar-name (str artifact-name ".war"))
 (def git-ref (clojure.string/replace (:out (clojure.java.shell/sh "git" "rev-parse" "HEAD"))#"\n" "" ))
 
-(create-ns 'pdok.lein)
-(defn key->placeholder [k]
-  (re-pattern (str "\\$\\{" (name k) "\\}")))
-
-(defn generate-from-template [template-file replacement-map]
-  (let [template (slurp template-file)
-        replacements (map (fn [[k v]] [(key->placeholder k) (str v)]) replacement-map)]
-    (reduce (fn [acc [k v]] (clojure.string/replace acc k v)) template replacements)))
-
-(intern 'pdok.lein 'key->placeholder key->placeholder)
-(intern 'pdok.lein 'generate-from-template generate-from-template)
-
-(defproject featured-gml release-version
-  :uberjar-name ~uberjar-name
-  :manifest {"Implementation-Version" ~(str release-version "(" git-ref ")")}
+(defproject featured-gml version
+  :min-lein-version "2.5.4"
+  :manifest {"Implementation-Version" ~(str version "(" git-ref ")")}
   :description "gml to featured json conversion lib"
   :url "http://github.so.kadaster.nl/PDOK/featured-gml"
   :license {:name "Eclipse Public License"
@@ -46,18 +32,12 @@
   :plugins [[lein-ring "0.9.7"]
             [lein-filegen "0.1.0-SNAPSHOT"]]
   :ring {:port 4000
-	 :handler featured-gml.api/app
-         :uberwar-name ~uberwar-name}
+         :uberwar-name ~uberwar-name
+         :handler featured-gml.api/app}
   :profiles {:uberjar {:aot :all}
-             :test {:dependencies [[ring/ring-mock "0.3.0"]]}}
-  :aliases {"build" ["do" ["clean"] ["compile"] ["test"] ["filegen"]
-                      ["ring" "uberwar"]]}
-  :filegen [{:data {:RELEASE_VERSION ~release-version :CHANGE_NUMBER ~change-number}
-             :template-fn (partial pdok.lein/generate-from-template "deployit-manifest.xml.template")
-             :target "target/deployit-manifest.xml"}
-            {:data ~release-version
-             :template-fn #(str "FEATURED_GML_VERSION=" %1 "\n")
-             :target "target/featured-gml.properties"}
-            {:data ~(str release-version "(" git-ref ")")
-             :template-fn #(str %1)
-             :target "resources/version"}])
+             :cli {:uberjar-name ~uberjar-name
+                   :aliases {"build" ["do" "uberjar"]}}
+             :web-war {:aliases {"build" ["do" ["ring" "uberwar"]]}}
+             :web-jar {:uberjar-name ~webjar-name
+                       :aliases {"build" ["do" ["ring" "uberjar"]]}}
+             :test {:dependencies [[ring/ring-mock "0.3.0"]]}})
