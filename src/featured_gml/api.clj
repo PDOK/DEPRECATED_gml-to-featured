@@ -129,7 +129,7 @@
 (defn handler [cc]
   (defroutes handler
              (context "/api" []
-               (GET "/info" [] (r/response {:version (runner/implementation-version)}))
+               (GET "/info" [] (r/response {:version (slurp (clojure.java.io/resource "version"))}))
                (GET "/ping" [] (r/response {:pong (tl/local-now)}))
                (GET "/get/:file" request handle-getjson-req)
                (POST "/xml2json" request (partial handle-xml2json-req cc)))

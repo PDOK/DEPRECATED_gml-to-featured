@@ -34,10 +34,13 @@
   :ring {:port 4000
          :uberwar-name ~uberwar-name
          :handler featured-gml.api/app}
+  :filegen [{:data ~(str version "(" git-ref ")")
+             :template-fn #(str %1)
+             :target "resources/version"}]
   :profiles {:uberjar {:aot :all}
              :cli {:uberjar-name ~uberjar-name
                    :aliases {"build" ["do" "uberjar"]}}
-             :web-war {:aliases {"build" ["do" ["ring" "uberwar"]]}}
+             :web-war {:aliases {"build" ["do" "filegen" ["ring" "uberwar"]]}}
              :web-jar {:uberjar-name ~webjar-name
-                       :aliases {"build" ["do" ["ring" "uberjar"]]}}
+                       :aliases {"build" ["do" "filegen" ["ring" "uberjar"]]}}
              :test {:dependencies [[ring/ring-mock "0.3.0"]]}})
