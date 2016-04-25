@@ -5,11 +5,11 @@
             [clj-time.core :as time]
             [clj-time.format :as time-format]
             [clojure.string :as str]
-            [org.httpkit.client :as http-kit]
             [clojure.tools.logging :as log]
             [ring.mock.request :refer :all]
             [environ.core :refer [env]]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all])
+  (:import (java.io File)))
 
 (defn use-test-result-store [f]
   "Set a specific, temporary result-store in tmp-dir"
@@ -33,8 +33,11 @@
   "Test if input-file api-test/Landsgrens.gml results in a zip. Note does not test CONTENT of result"
   (let [mapping (slurp (io/resource "api-test/bestuurlijkegrenzen.edn"))
         input (io/input-stream (io/resource "api-test/Landsgrens.gml"))
+        tmp (File/createTempFile "fgtest" "json")
+        _ (clojure.java.io/copy input tmp)
         validity (time-format/unparse built-in-formatter (time/now))
-        result (process-downloaded-xml2json-data "test" mapping validity false input "inputnaam.gml")]
+        result (process-downloaded-xml2json-data "test" mapping validity false tmp "inputnaam.gml")
+        _ (clojure.java.io/delete-file tmp)]
     ; check resulting content
     (is (= 1 (count (:json-files result))))
     (is (.endsWith (first (:json-files result)) "inputnaam.gml.json.zip"))
@@ -45,8 +48,11 @@
   "Test if input-file api-test/bestuurlijkegrenzen.zip results in multiple zip files. Note does not test CONTENT of result"
   (let [mapping (slurp (io/resource "api-test/bestuurlijkegrenzen.edn"))
         input (io/input-stream (io/resource "api-test/bestuurlijkegrenzen.zip"))
+        tmp (File/createTempFile "fgtest" "zip")
+        _ (clojure.java.io/copy input tmp)
         validity (time-format/unparse built-in-formatter (time/now))
-        result (process-downloaded-xml2json-data "test" mapping validity true input "bestuurlijkegrenzen.zip")]
+        result (process-downloaded-xml2json-data "test" mapping validity true tmp "bestuurlijkegrenzen.zip")
+        _ (clojure.java.io/delete-file tmp)]
     ; check resulting content
     (is (= 2 (count (:json-files result))))
     (doall

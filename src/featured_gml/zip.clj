@@ -1,12 +1,12 @@
 (ns featured-gml.zip
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log])
-  (:import (java.util.zip ZipOutputStream ZipEntry)))
+  (:import (java.util.zip ZipOutputStream ZipFile ZipEntry)))
 
-(defn entries [zipfile]
- (lazy-seq
-  (if-let [entry (.getNextEntry zipfile)]
-   (cons entry (entries zipfile)))))
+(defn xml-entries [^ZipFile zipfile]
+  (filter (fn [e] (and #(not (.isDirectory e))
+                       (or (.endsWith (.getName e) "xml")
+                           (.endsWith (.getName e) "gml")))) (enumeration-seq (.entries zipfile))))
 
 (defn zip-file [uncompressed-file]
   "Return zip-file location with zipped content of uncompressed-file"

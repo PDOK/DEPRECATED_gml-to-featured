@@ -24,7 +24,7 @@
                  [ring/ring-json "0.3.1"]
                  [compojure "1.4.0"]
                  [prismatic/schema "0.4.3"]
-                 [http-kit "2.1.18"]
+                 [clj-http "2.1.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [log4j/log4j "1.2.17"]
                  [environ "0.5.0"]]

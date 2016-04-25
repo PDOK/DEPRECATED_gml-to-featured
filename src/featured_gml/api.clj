@@ -8,7 +8,7 @@
             [compojure.core :refer :all]
             [compojure.route :as route]
             [schema.core :as s]
-            [org.httpkit.client :as http-kit]
+            [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
             [clojure.core.async
@@ -18,7 +18,8 @@
             [clojure.java.io :as io])
   (:gen-class)
   (:import (org.joda.time DateTime)
-           (java.util.zip ZipInputStream)))
+           (java.util.zip ZipFile)
+           (java.io FileInputStream File)))
 
 (extend-protocol cheshire.generate/JSONable
   DateTime
@@ -29,51 +30,56 @@
   (with-open [writer (io/writer out-file)]
     (runner/translate dataset mapping validity reader writer)))
 
-(defn- translate-file-from-zipentry [dataset mapping validity zipstream entry]
+(defn- translate-file-from-zipentry [dataset mapping validity zipfile entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
-  (let [resulting-file (fs/create-target-file (.getName entry))]
+  (let [resulting-file (fs/create-target-file (.getName (File. (.getName entry))))
+        entry-stream (.getInputStream zipfile entry)]
     (log/debug "Going to transform zip-entry" (.getName entry) "to" (.getPath resulting-file))
-    (translate-file-from-stream zipstream dataset mapping validity resulting-file)
-    (.closeEntry zipstream)
+    (translate-file-from-stream entry-stream dataset mapping validity resulting-file)
+    (.close entry-stream)
     resulting-file))
 
-(defn- translate-from-zipstream [stream dataset mapping validity]
+(defn- translate-from-zipfile [^File file dataset mapping validity]
   "Transforms entries in a zip file and returns a vector with the transformed files"
-  (with-open [zipstream (ZipInputStream. stream)]
+  (with-open [zip (ZipFile. file)]
     (into [] (map (partial translate-file-from-zipentry
                               dataset
                               mapping
                               validity
-                              zipstream) (zip/entries zipstream)))))
+                              zip) (zip/xml-entries zip)))))
 
 
-(defn translate-entire-stream [zipped stream dataset mapping validity original-filename]
+(defn translate-entire-file [zipped file dataset mapping validity original-filename]
   "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if zipped
-    (translate-from-zipstream stream dataset mapping validity)
+    (translate-from-zipfile file dataset mapping validity)
     (let [target-filename (fs/create-target-file original-filename)]
-      (do (translate-file-from-stream stream dataset mapping validity target-filename))
-      [target-filename])))
+      (with-open [stream (FileInputStream. file)]
+        (do (translate-file-from-stream stream dataset mapping validity target-filename))
+        [target-filename]))))
 
 (defn extract-name-from-uri [uri]
   "Extract the requested-path from an uri"
   (last (re-find #"(\w+).(?:\w+)$" uri)))
 
-(defn download-file-as-stream [uri]
+(defn download-file [uri]
   "Download uri and get the body as stream. Returns :error key if an error occured"
-  (let [{:keys [status body headers]} @(http-kit/get uri {:as :stream})]
+  (let [tmp (File/createTempFile "featured-gml" (extract-name-from-uri uri))
+        {:keys [status body headers]} (http/get uri {:as :stream})]
     (if (nil? status)
       [:download-error (str "No response when trying to download: " uri)]
       (if (< status 300)
-        {:zipped (re-find #"zip" (:content-type headers))
-         :dlstream body
-         :filename (extract-name-from-uri uri)}
+        (do
+          (io/copy body tmp)
+          (.close body)
+          {:zipped (re-find #"zip" (:content-type headers))
+           :file   tmp})
         {:download-error (str "No success: Got a statuscode " status " when downloading " uri )}))))
 
-(defn process-downloaded-xml2json-data [datasetname mapping validity zipped data-stream original-filename]
+(defn process-downloaded-xml2json-data [datasetname mapping validity zipped data-file original-filename]
   (log/info "Going to transform dataset" datasetname)
-  (let [unzipped-files (translate-entire-stream zipped
-                                                data-stream
+  (let [unzipped-files (translate-entire-file zipped
+                                                data-file
                                                 datasetname
                                                 mapping
                                                 validity
@@ -87,10 +93,12 @@
 
 (defn process-xml2json [dataset mapping uri validity]
   "Proces the request and  zip the result in a zip on the filesystem and return a reference to this zip-file"
-  (let [result (download-file-as-stream uri)]
+  (let [result (download-file uri)]
      (if (:download-error result)
       (r/response {:status 400 :body (:download-error result)})
-      (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:dlstream result) (:filename result)))))
+      (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri uri))]
+        (fs/safe-delete (:file result))
+        process-result))))
 
 (defn async-process-xml2json [cc callback-uri dataset mapping file validity]
   "Async handling of xml2json. Will do a callback once completed on the provided callback-uri"
@@ -131,6 +139,7 @@
              (context "/api" []
                (GET "/info" [] (r/response {:version (slurp (clojure.java.io/resource "version"))}))
                (GET "/ping" [] (r/response {:pong (tl/local-now)}))
+               (POST "/ping" [] (fn [r] (log/info "!ping pong!" (:body r)) (r/response {:pong (tl/local-now)})))
                (GET "/get/:file" request handle-getjson-req)
                (POST "/xml2json" request (partial handle-xml2json-req cc)))
              (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json")))
@@ -145,8 +154,8 @@
         {:status 400 :body (.getMessage e)}))))
 
 (defn- callbacker [uri result]
-  (http-kit/post uri {:body (cheshire.core/generate-string result)
-                      :headers {"Content-Type" "application/json"}}))
+  (http/post uri {:body (cheshire.core/generate-string result)
+                  :headers {"Content-Type" "application/json"}}))
 (def app
   (let [cc (chan 10)]
     (go (while true (apply callbacker (<! cc))))
