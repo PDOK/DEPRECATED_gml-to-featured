@@ -1,5 +1,5 @@
-(ns featured-gml.code
-  (:require [featured-gml.xml :refer :all]
+(ns gml-to-featured.code
+  (:require [gml-to-featured.xml :refer :all]
             [clojure.zip :as zip]))
 
 (defn hyphenated->camel [^String method-name]

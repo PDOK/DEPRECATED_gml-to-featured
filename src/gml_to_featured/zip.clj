@@ -1,4 +1,4 @@
-(ns featured-gml.zip
+(ns gml-to-featured.zip
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log])
   (:import (java.util.zip ZipOutputStream ZipFile ZipEntry)))

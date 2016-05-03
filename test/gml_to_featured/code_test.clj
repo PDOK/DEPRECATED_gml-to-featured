@@ -1,6 +1,6 @@
-(ns featured-gml.code-test
+(ns gml-to-featured.code-test
   (:require [clojure.test :refer :all]
-            [featured-gml.code :refer :all]))
+            [gml-to-featured.code :refer :all]))
 
 
 (deftest set-action-test
@@ -15,11 +15,11 @@
   (testing "auto name with camelcase"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                (clojure.core/let [zp (if (gml-to-featured.code/zip? feature)
                                         feature
                                         (clojure.zip/xml-zip feature))]
                   {:_action :new,
-                   :test-selector (featured-gml.xml/xml1-> zp :testSelector featured-gml.xml/text)})))
+                   :test-selector (gml-to-featured.xml/xml1-> zp :testSelector gml-to-featured.xml/text)})))
          (macroexpand auto-name)))))
 
 
@@ -31,11 +31,11 @@
   (testing "self defined selector"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                (clojure.core/let [zp (if (gml-to-featured.code/zip? feature)
                                         feature
                                         (clojure.zip/xml-zip feature))]
                   {:_action :new,
-                   :target-key (featured-gml.xml/xml1-> zp :selectorKey featured-gml.xml/text)})))
+                   :target-key (gml-to-featured.xml/xml1-> zp :selectorKey gml-to-featured.xml/text)})))
          (macroexpand define-name)))))
 
 (def base
@@ -49,12 +49,12 @@
   (testing "translator with base"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                (clojure.core/let [zp (if (gml-to-featured.code/zip? feature)
                                         feature
                                         (clojure.zip/xml-zip feature))]
                   {:_action :new,
-                   :selector (featured-gml.xml/xml1-> zp :selector featured-gml.xml/text)
-                   :selector2 (featured-gml.xml/xml1-> zp :selector2 featured-gml.xml/text)})))
+                   :selector (gml-to-featured.xml/xml1-> zp :selector gml-to-featured.xml/text)
+                   :selector2 (gml-to-featured.xml/xml1-> zp :selector2 gml-to-featured.xml/text)})))
          (macroexpand extension)))))
 
 (def or-choice
@@ -65,12 +65,12 @@
   (testing "choice test"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                (clojure.core/let [zp (if (gml-to-featured.code/zip? feature)
                                         feature
                                         (clojure.zip/xml-zip feature))]
                   {:_action :new,
-                   :choice (clojure.core/or (featured-gml.xml/xml1-> zp :A featured-gml.xml/text)
-                               (featured-gml.xml/xml1-> zp :B featured-gml.xml/text))})))
+                   :choice (clojure.core/or (gml-to-featured.xml/xml1-> zp :A gml-to-featured.xml/text)
+                               (gml-to-featured.xml/xml1-> zp :B gml-to-featured.xml/text))})))
          (macroexpand or-choice)))))
 
 (def tag-replacement
@@ -81,11 +81,11 @@
   (testing "replace function tags"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                (clojure.core/let [zp (if (gml-to-featured.code/zip? feature)
                                         feature
                                         (clojure.zip/xml-zip feature))]
                   {:_action :new,
-                   :target-key (featured-gml.xml/xml1-> zp featured-gml.xml/tag)})))
+                   :target-key (gml-to-featured.xml/xml1-> zp gml-to-featured.xml/tag)})))
          (macroexpand tag-replacement)))))
 
 (def function-append
@@ -97,11 +97,11 @@
   (testing "append function"
     (is (=
          '(fn* ([feature]
-                (clojure.core/let [zp (if (featured-gml.code/zip? feature)
+                (clojure.core/let [zp (if (gml-to-featured.code/zip? feature)
                                         feature
                                         (clojure.zip/xml-zip feature))]
                   {:_action :new,
                    :target-key (clojure.core/->
-                                (featured-gml.xml/xml1-> zp :targetKey featured-gml.xml/text)
-                                featured-gml.code/moment)})))
+                                (gml-to-featured.xml/xml1-> zp :targetKey gml-to-featured.xml/text)
+                                gml-to-featured.code/moment)})))
          (macroexpand function-append)))))

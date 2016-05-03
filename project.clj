@@ -1,15 +1,15 @@
 (def version (slurp "VERSION"))
-(def artifact-name (str "featured-gml-" version))
+(def artifact-name (str "gml-to-featured-" version))
 (def uberjar-name (str artifact-name "-standalone.jar"))
 (def webjar-name (str artifact-name "-web.jar"))
 (def uberwar-name (str artifact-name ".war"))
 (def git-ref (clojure.string/replace (:out (clojure.java.shell/sh "git" "rev-parse" "HEAD"))#"\n" "" ))
 
-(defproject featured-gml version
+(defproject gml-to-featured version
   :min-lein-version "2.5.4"
   :manifest {"Implementation-Version" ~(str version "(" git-ref ")")}
   :description "gml to featured json conversion lib"
-  :url "http://github.so.kadaster.nl/PDOK/featured-gml"
+  :url "http://github.so.kadaster.nl/PDOK/gml-to-featured"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :repositories [["local" "file:repo"]]
@@ -28,12 +28,12 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [log4j/log4j "1.2.17"]
                  [environ "0.5.0"]]
-  :main ^:skip-aot featured-gml.runner
+  :main ^:skip-aot gml-to-featured.runner
   :plugins [[lein-ring "0.9.7"]
             [lein-filegen "0.1.0-SNAPSHOT"]]
   :ring {:port 4000
          :uberwar-name ~uberwar-name
-         :handler featured-gml.api/app}
+         :handler gml-to-featured.api/app}
   :filegen [{:data ~(str version "(" git-ref ")")
              :template-fn #(str %1)
              :target "resources/version"}]

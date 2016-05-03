@@ -1,4 +1,4 @@
-(ns featured-gml.filesystem
+(ns gml-to-featured.filesystem
   (:require [clojure.java.io :as io]
             [environ.core :refer [env]]
             [clj-time.core :as time]
@@ -7,8 +7,8 @@
 
 (def resultstore
   (let [separator (System/getProperty "file.separator")
-        path (io/file (or (env :featured-gml.jsonstore)
-                          (str (System/getProperty "java.io.tmpdir") separator "featured-gml" separator)))]
+        path (io/file (or (env :gml-to-featured.jsonstore)
+                          (str (System/getProperty "java.io.tmpdir") separator "gml-to-featured" separator)))]
     (when-not (.exists path) (.mkdirs path))
     path))
 

@@ -1,7 +1,7 @@
-(ns featured-gml.api
-  (:require [featured-gml.runner :as runner]
-            [featured-gml.zip :as zip]
-            [featured-gml.filesystem :as fs]
+(ns gml-to-featured.api
+  (:require [gml-to-featured.runner :as runner]
+            [gml-to-featured.zip :as zip]
+            [gml-to-featured.filesystem :as fs]
             [ring.util.response :as r]
             [ring.middleware.json :as middleware]
             [clj-time [core :as t] [local :as tl]]
@@ -64,7 +64,7 @@
 
 (defn download-file [uri]
   "Download uri and get the body as stream. Returns :error key if an error occured"
-  (let [tmp (File/createTempFile "featured-gml" (extract-name-from-uri uri))
+  (let [tmp (File/createTempFile "gml-to-featured" (extract-name-from-uri uri))
         {:keys [status body headers]} (http/get uri {:as :stream})]
     (if (nil? status)
       [:download-error (str "No response when trying to download: " uri)]
@@ -142,7 +142,7 @@
                (POST "/ping" [] (fn [r] (log/info "!ping pong!" (:body r)) (r/response {:pong (tl/local-now)})))
                (GET "/get/:file" request handle-getjson-req)
                (POST "/xml2json" request (partial handle-xml2json-req cc)))
-             (route/not-found "Featured-gml: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json")))
+             (route/not-found "gml-to-featured: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json")))
 
 (defn wrap-exception-handling
   [handler]

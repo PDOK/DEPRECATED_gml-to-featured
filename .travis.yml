@@ -21,9 +21,9 @@ deploy:
   api_key: $GITHUB_OAUTH_TOKEN
   file_glob: true
   file:
-    - "releases/featured-gml-$VERSION-standalone.jar"
-    - "releases/featured-gml-$VERSION-web.jar"
-    - "releases/featured-gml-$VERSION.war"
+    - "releases/gml-to-featured-$VERSION-standalone.jar"
+    - "releases/gml-to-featured-$VERSION-web.jar"
+    - "releases/gml-to-featured-$VERSION.war"
   skip_cleanup: true
   on:
     tags: true

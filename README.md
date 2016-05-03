@@ -1,8 +1,8 @@
-# featured-gml [![Build Status](https://travis-ci.org/PDOK/featured-gml.svg?branch=master)](https://travis-ci.org/PDOK/featured-gml)
+# gml-to-featured [![Build Status](https://travis-ci.org/PDOK/gml-to-featured.svg?branch=master)](https://travis-ci.org/PDOK/gml-to-featured)
 
 Translates xml/gml input to json files which can be handled by featured. 
 
-The resulting files are stored on the system in the directory set by the property "featured-gml.jsonstore". If this property is not set, the temporary directory is used.
+The resulting files are stored on the system in the directory set by the property "gml-to-featured.jsonstore". If this property is not set, the temporary directory is used.
 
 ## Example usage
 

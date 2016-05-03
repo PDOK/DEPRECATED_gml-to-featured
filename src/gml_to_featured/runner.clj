@@ -1,6 +1,6 @@
-(ns featured-gml.runner
-  (:require [featured-gml.xml :as xml]
-            [featured-gml.code :as code]
+(ns gml-to-featured.runner
+  (:require [gml-to-featured.xml :as xml]
+            [gml-to-featured.code :as code]
             [clojure.edn :as edn]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
@@ -80,9 +80,9 @@
   (System/exit status))
 
 (defn implementation-version []
-  (if-let [version (System/getProperty "featured-gml.version")]
+  (if-let [version (System/getProperty "gml-to-featured.version")]
     version
-    (-> ^java.lang.Class (eval 'featured_gml.runner) .getPackage .getImplementationVersion)))
+    (-> ^java.lang.Class (eval 'gml_to_featured.runner) .getPackage .getImplementationVersion)))
 
 (defn usage [options-summary]
   (->> ["This program converts xml to featured-ready json. The conversion is done using the provided mappingconfig(uration) specified in edn."

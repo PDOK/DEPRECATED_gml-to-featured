@@ -7,10 +7,10 @@ rm -rf releases
 mkdir releases
 
 $lein with-profile +cli build
-cp target/featured-gml-$VERSION-standalone.jar releases/
+cp target/gml-to-featured-$VERSION-standalone.jar releases/
 
 $lein with-profile +web-jar build
-cp target/featured-gml-$VERSION-web.jar releases/
+cp target/gml-to-featured-$VERSION-web.jar releases/
 
 $lein with-profile +web-war build
-cp target/featured-gml-$VERSION.war releases/
+cp target/gml-to-featured-$VERSION.war releases/

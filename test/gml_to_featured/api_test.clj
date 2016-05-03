@@ -1,6 +1,6 @@
-(ns featured-gml.api-test
-  (:require [featured-gml.api :refer :all]
-            [featured-gml.filesystem :as fs]
+(ns gml-to-featured.api-test
+  (:require [gml-to-featured.api :refer :all]
+            [gml-to-featured.filesystem :as fs]
             [clojure.java.io :as io]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
@@ -14,8 +14,8 @@
 (defn use-test-result-store [f]
   "Set a specific, temporary result-store in tmp-dir"
   (let [test-result-store (.getPath (io/file (System/getProperty "java.io.tmpdir") (fs/uuid)))]
-    (log/debug "Using featured-gml.jsonstore during TEST" test-result-store)
-    (env "featured-gml.jsonstore" test-result-store)
+    (log/debug "Using gml-to-featured.jsonstore during TEST" test-result-store)
+    (env "gml-to-featured.jsonstore" test-result-store)
     (f)
     (fs/safe-delete test-result-store)))
 

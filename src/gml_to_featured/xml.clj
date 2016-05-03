@@ -1,4 +1,4 @@
-(ns featured-gml.xml
+(ns gml-to-featured.xml
   (:require [clojure.data.xml :as xml]
             [clojure.zip :as zip]
             [clojure.data.zip :as zf])

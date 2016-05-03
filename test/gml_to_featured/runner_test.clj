@@ -1,6 +1,6 @@
-(ns featured-gml.runner-test
-  (:require [featured-gml.runner :refer :all]
-            [featured-gml.code :refer :all]
+(ns gml-to-featured.runner-test
+  (:require [gml-to-featured.runner :refer :all]
+            [gml-to-featured.code :refer :all]
             [clojure.test :refer :all]))
 
 (defn translate-resource [resource element translator]
