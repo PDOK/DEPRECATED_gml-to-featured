@@ -25,14 +25,24 @@
       translated
       [translated])))
 
+(defn progress-logger []
+  (let [counter (volatile! 0)]
+    (fn [obj]
+      (vswap! counter inc)
+      (when (= 0 (mod @counter 10000))
+        (log/info "Processed " @counter))
+      obj)))
+
 (defn process-stream [stream]
-  (->> stream
-       (.createXMLEventReader xml/input-factory)
-       (xml/pull-seq)
-       xml/event->tree
-       *sequence-selector*
-       (mapcat member->map)
-       (filter #(not= unknown %))))
+  (let [log-progress (progress-logger)]
+    (->> stream
+         (.createXMLEventReader xml/input-factory)
+         (xml/pull-seq)
+         xml/event->tree
+         *sequence-selector*
+         (mapcat member->map)
+         (map log-progress)
+         (filter #(not= unknown %)))))
 
 (defn process [reader writer dataset-name validity]
   (let [first? (ref true)]
