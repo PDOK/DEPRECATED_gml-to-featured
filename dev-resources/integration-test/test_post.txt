@@ -1,0 +1,30 @@
+{
+    "dataset" : "bestuurlijkegrenzen",
+    "mapping" : "{:Gemeenten #xml2json/mappedcollection {:type :new :mapping
+                    [
+                     [:_id :s/id-attr]
+                     [:_collection :s/tag clojure.string/lower-case]
+                     :Code
+                     :Gemeentenaam
+                      [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
+                     ]},
+ :Landsgrens #xml2json/mappedcollection {:type :new :mapping
+                    [
+                     [:_id :s/id-attr]
+                     [:_collection :s/tag clojure.string/lower-case]
+                     :Code
+                     :Landsnaam
+                      [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
+                     ]},
+ :Provincies #xml2json/mappedcollection {:type :new :mapping
+                    [
+                     [:_id :s/id-attr]
+                     [:_collection :s/tag clojure.string/lower-case]
+                     :Provincienaam
+                      [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
+                     ]}
+}",
+    "file" : "http://localhost:8000/bestuurlijkegrenzen.zip",
+    "callback" : "http://localhost:4000/api/ping",
+    "validity": "2013-10-21T13:28:06.419Z"
+}

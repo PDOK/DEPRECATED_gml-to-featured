@@ -40,7 +40,7 @@ Do a POST to api/xml2json with the following body. Note this mapping is stored i
 }
 ```
 
-There is both a synchronous and an asynchronous approach. **If in the POST request, the "callback" property is set, the request is handled asynchronously.** 
+**The request is handled asynchronously. If no callback is set, you will not get any result**
 
 A successfull response looks like:
 ```json

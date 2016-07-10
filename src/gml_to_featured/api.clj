@@ -3,7 +3,8 @@
             [gml-to-featured.zip :as zip]
             [gml-to-featured.filesystem :as fs]
             [ring.util.response :as r]
-            [ring.middleware.json :as middleware]
+            [ring.middleware.json :refer :all]
+            [ring.middleware.defaults :refer :all]
             [clj-time [core :as t] [local :as tl]]
             [compojure.core :refer :all]
             [compojure.route :as route]
@@ -19,7 +20,8 @@
   (:gen-class)
   (:import (org.joda.time DateTime)
            (java.util.zip ZipFile)
-           (java.io FileInputStream File)))
+           (java.io FileInputStream File)
+           (clojure.lang PersistentQueue)))
 
 (extend-protocol cheshire.generate/JSONable
   DateTime
@@ -91,36 +93,38 @@
     (log/info "Zipped" (count zipped-files) "file(s) in store-directory")
     {:json-files (map #(.getName %) zipped-files)}))
 
-(defn process-xml2json [dataset mapping uri validity]
+(defn stats-on-callback [callback-chan request stats]
+  (when (:callback request)
+    (go (>! callback-chan [(:callback request) stats]))))
+
+(defn process-xml2json* [stats callback-chan {:keys [file dataset mapping validity] :as request}]
   "Proces the request and  zip the result in a zip on the filesystem and return a reference to this zip-file"
-  (let [result (download-file uri)]
+  (log/info "Processing " request)
+  (swap! stats assoc :processing (dissoc request :mapping))
+  (swap! stats update-in [:queued] pop)
+  (let [result (download-file file)]
      (if (:download-error result)
-      (r/response {:status 400 :body (:download-error result)})
-      (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri uri))]
-        (fs/safe-delete (:file result))
-        process-result))))
+       (stats-on-callback callback-chan request (assoc request :error (:download-error result)))
+       (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri file))]
+         (fs/safe-delete (:file result))
+         (swap! stats assoc :processing nil)
+         (stats-on-callback callback-chan request process-result)))))
 
-(defn async-process-xml2json [cc callback-uri dataset mapping file validity]
-  "Async handling of xml2json. Will do a callback once completed on the provided callback-uri"
-  (let [rc (thread (process-xml2json dataset mapping file validity))]
-    (go (>! cc [callback-uri (<! rc)]))
-    (log/info "Async job started. Callback will be done on" callback-uri)
-    {:status 200 :body (str "Accepted will do callback on " callback-uri)}))
-
-(defn handle-xml2json-req [cc req]
-  "Get the properties from the request and start an sync or async xml2json operation (depending on if a callback-uri is provided)"
+(defn handle-xml2json-req [stats process-chan http-request]
+  "Get the properties from the request and start an async xml2json operation"
   (future (fs/cleanup-old-files (* 3600 * 48)))
-  (r/response
-    (let [dataset (:dataset (:body req))
-          mapping (:mapping (:body req))
-          file (:file (:body req))
-          validity (:validity (:body req))
-          callback-uri (:callback-uri (:body req))]
-      (if (some str/blank? [dataset mapping file validity])
-        {:status 400 :body "dataset, mapping, file and validity are all required"}
-        (if callback-uri
-          (async-process-xml2json cc callback-uri dataset mapping file validity)
-          (process-xml2json dataset mapping file validity))))))
+  (let [request (:body http-request)
+        dataset (:dataset request)
+        mapping (:mapping request)
+        file (:file request)
+        validity (:validity request)]
+    (if (some str/blank? [dataset mapping file validity])
+      (r/status (r/response {:error "dataset, mapping, file and validity are all required"}) 400)
+      (do
+        (log/info "Queueing " (dissoc request :mapping))
+        (if (a/offer! process-chan request)
+          (do (swap! stats update-in [:queued] #(conj % (dissoc request :mapping))) (r/response {:result :ok}))
+          (r/status (r/response {:error "queue full"}) 429))))))
 
 (defn handle-getjson-req [req]
   "Stream a json file identified by uuid"
@@ -134,15 +138,20 @@
         :body    local-file}
        {:status 500, :body "No such file"})))
 
-(defn handler [cc]
-  (defroutes handler
+(defn- callbacker [uri result]
+  (http/post uri {:body (cheshire.core/generate-string result)
+                  :headers {"Content-Type" "application/json"}}))
+
+(defn api-routes [process-chan stats]
+  (defroutes api-routes
              (context "/api" []
                (GET "/info" [] (r/response {:version (slurp (clojure.java.io/resource "version"))}))
                (GET "/ping" [] (r/response {:pong (tl/local-now)}))
                (POST "/ping" [] (fn [r] (log/info "!ping pong!" (:body r)) (r/response {:pong (tl/local-now)})))
-               (GET "/get/:file" request handle-getjson-req)
-               (POST "/xml2json" request (partial handle-xml2json-req cc)))
-             (route/not-found "gml-to-featured: Unknown operation. Try /api/info, /api/ping, /api/get, /api/xml2json")))
+               (GET "/stats" [] (r/response @stats))
+               (GET "/get/:file" [] handle-getjson-req)
+               (POST "/xml2json" [] (partial handle-xml2json-req stats process-chan)))
+             (route/not-found "gml-to-featured: Unknown operation. Try /api/stats, /api/info, /api/ping, /api/get, /api/xml2json")))
 
 (defn wrap-exception-handling
   [handler]
@@ -153,13 +162,17 @@
         (log/error e)
         {:status 400 :body (.getMessage e)}))))
 
-(defn- callbacker [uri result]
-  (http/post uri {:body (cheshire.core/generate-string result)
-                  :headers {"Content-Type" "application/json"}}))
-(def app
-  (let [cc (chan 10)]
-    (go (while true (apply callbacker (<! cc))))
-    (-> (handler cc)
-        (middleware/wrap-json-body {:keywords? true})
-        middleware/wrap-json-response
-        wrap-exception-handling)))
+(defn rest-handler [& more]
+  (let [process-chan (chan 1000)
+        callback-chan (chan 10)
+        stats (atom {:processing nil
+                     :queued     (PersistentQueue/EMPTY)})]
+    (go (while true (process-xml2json* stats callback-chan (<! process-chan))))
+    (go (while true (apply callbacker (<! callback-chan))))
+    (-> (api-routes process-chan stats)
+        (wrap-json-body {:keywords? true :bigdecimals? true})
+        (wrap-json-response)
+        (wrap-defaults api-defaults)
+        (wrap-exception-handling))))
+
+(def app (routes (rest-handler)))
