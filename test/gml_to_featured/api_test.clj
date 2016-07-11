@@ -23,10 +23,9 @@
 
 (def built-in-formatter (time-format/formatters :basic-date-time))
 
-(defn test-get [file-name]
-  (let [get-req (str "/api/get/" file-name)
-        response (app (request :get get-req))]
-    (log/info "Using following url for GET: "get-req)
+(defn test-get [file-uri]
+  (let [response (app (request :get file-uri))]
+    (log/info "Using following url for GET: " file-uri)
     (is (= (:status response) 200))))
 
 (deftest single-file-converted-correctly

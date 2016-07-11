@@ -1,5 +1,6 @@
 (ns gml-to-featured.api
   (:require [gml-to-featured.runner :as runner]
+            [gml-to-featured.config :as config]
             [gml-to-featured.zip :as zip]
             [gml-to-featured.filesystem :as fs]
             [ring.util.response :as r]
@@ -91,23 +92,23 @@
     (fs/delete-files unzipped-files)
     (log/info "Unzipped files removed")
     (log/info "Zipped" (count zipped-files) "file(s) in store-directory")
-    {:json-files (map #(.getName %) zipped-files)}))
+    {:json-files (map #(config/create-url (str "api/get/" (.getName %))) zipped-files)}))
 
 (defn stats-on-callback [callback-chan request stats]
   (when (:callback request)
     (go (>! callback-chan [(:callback request) stats]))))
 
-(defn process-xml2json* [stats callback-chan {:keys [file dataset mapping validity] :as request}]
+(defn process-xml2json* [worker-id stats callback-chan {:keys [file dataset mapping validity] :as request}]
   "Proces the request and  zip the result in a zip on the filesystem and return a reference to this zip-file"
   (log/info "Processing " request)
-  (swap! stats assoc :processing (dissoc request :mapping))
+  (swap! stats assoc-in [:processing worker-id] (dissoc request :mapping))
   (swap! stats update-in [:queued] pop)
   (let [result (download-file file)]
      (if (:download-error result)
        (stats-on-callback callback-chan request (assoc request :error (:download-error result)))
        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri file))]
          (fs/safe-delete (:file result))
-         (swap! stats assoc :processing nil)
+         (swap! stats assoc-in [:processing worker-id] nil)
          (stats-on-callback callback-chan request process-result)))))
 
 (defn handle-xml2json-req [stats process-chan http-request]
@@ -162,12 +163,16 @@
         (log/error e)
         {:status 400 :body (.getMessage e)}))))
 
+(defn create-workers [stats callback-chan process-chan]
+  (let [factory-fn (fn [id] (log/info "Creating worker " id) (go (while true (process-xml2json* id stats callback-chan (<! process-chan)))))]
+    (config/create-workers factory-fn)))
+
 (defn rest-handler [& more]
   (let [process-chan (chan 1000)
         callback-chan (chan 10)
-        stats (atom {:processing nil
+        stats (atom {:processing {}
                      :queued     (PersistentQueue/EMPTY)})]
-    (go (while true (process-xml2json* stats callback-chan (<! process-chan))))
+    (create-workers stats callback-chan process-chan)
     (go (while true (apply callbacker (<! callback-chan))))
     (-> (api-routes process-chan stats)
         (wrap-json-body {:keywords? true :bigdecimals? true})

@@ -2,7 +2,7 @@
 
 Translates xml/gml input to json files which can be handled by featured. 
 
-The resulting files are stored on the system in the directory set by the property "gml-to-featured.jsonstore". If this property is not set, the temporary directory is used.
+The resulting files are stored in the java temp directory.
 
 ## Example usage
 

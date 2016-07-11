@@ -37,6 +37,7 @@
   :filegen [{:data ~(str version "(" git-ref ")")
              :template-fn #(str %1)
              :target "resources/version"}]
+  :resource-paths ["config" "resources"]
   :profiles {:uberjar {:aot :all}
              :cli {:uberjar-name ~uberjar-name
                    :aliases {"build" ["do" "uberjar"]}}
