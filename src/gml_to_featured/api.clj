@@ -146,7 +146,8 @@
 (defn api-routes [process-chan stats]
   (defroutes api-routes
              (context "/api" []
-               (GET "/info" [] (r/response {:version (slurp (clojure.java.io/resource "version"))}))
+               (GET "/info" [] (r/response {:version (slurp (clojure.java.io/resource "version"))
+                                            :base-url (config/create-url "")}))
                (GET "/ping" [] (r/response {:pong (tl/local-now)}))
                (POST "/ping" [] (fn [r] (log/info "!ping pong!" (:body r)) (r/response {:pong (tl/local-now)})))
                (GET "/stats" [] (r/response @stats))
@@ -164,7 +165,10 @@
         {:status 400 :body (.getMessage e)}))))
 
 (defn create-workers [stats callback-chan process-chan]
-  (let [factory-fn (fn [id] (log/info "Creating worker " id) (go (while true (process-xml2json* id stats callback-chan (<! process-chan)))))]
+  (let [factory-fn (fn [worker-id]
+                     (swap! stats assoc-in [:processing worker-id] nil)
+                     (log/info "Creating worker " worker-id)
+                     (go (while true (process-xml2json* worker-id stats callback-chan (<! process-chan)))))]
     (config/create-workers factory-fn)))
 
 (defn rest-handler [& more]
