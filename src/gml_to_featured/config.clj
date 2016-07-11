@@ -36,6 +36,6 @@
     (str "http://" fully-qualified-domain-name "/" context-root (when context-root "/") path)))
 
 (defn create-workers [factory-f]
-  (let [n-workers (or (env :n-workers) 2)]
+  (let [n-workers (read-string (or (env :n-workers) "2"))]
     (dorun (for [i (range 0 n-workers)]
              (factory-f i)))))
