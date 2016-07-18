@@ -1,13 +1,12 @@
 (ns gml-to-featured.filesystem
   (:require [clojure.java.io :as io]
-            [gml-to-featured.config :refer [env]]
+            [gml-to-featured.config :refer [env] :as config]
             [clj-time.core :as time]
             clj-time.coerce)
   (:import (java.util UUID)))
 
 (def resultstore
-  (let [separator (System/getProperty "file.separator")
-        path (io/file (str (System/getProperty "java.io.tmpdir") separator "gml-to-featured" separator))]
+  (let [path config/store-dir]
     (when-not (.exists path) (.mkdirs path))
     path))
 

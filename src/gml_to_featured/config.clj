@@ -31,11 +31,21 @@
                 (load-props "plp.properties")))
 
 (defn create-url [path]
-  (let [fully-qualified-domain-name (or (env :fully-qualified-domain-name) "localhost:4000")
+  (let [fully-qualified-domain-name (or (env :fully-qualified-domain-name) "localhost")
+        port (or (env :port) "4000")
         context-root (or (env :context-root) nil)]
-    (str "http://" fully-qualified-domain-name "/" context-root (when context-root "/") path)))
+    (str "http://" fully-qualified-domain-name ":" port "/" context-root (when context-root "/") path)))
 
 (defn create-workers [factory-f]
   (let [n-workers (read-string (or (env :n-workers) "2"))]
     (dorun (for [i (range 0 n-workers)]
              (factory-f i)))))
+
+(def store-dir
+  (let [fqdn (or (env :fully-qualified-domain-name) "localhost")
+        s (System/getProperty "file.separator")
+        path (io/file (str (System/getProperty "java.io.tmpdir") s "gml-to-featured" s fqdn s ))]
+    path))
+
+(def cleanup-threshold
+  (read-string (or (env :cleanup-threshold) "5")))

@@ -113,7 +113,7 @@
 
 (defn handle-xml2json-req [stats process-chan http-request]
   "Get the properties from the request and start an async xml2json operation"
-  (future (fs/cleanup-old-files (* 3600 * 48)))
+  (future (fs/cleanup-old-files (* 3600 * 24 * config/cleanup-threshold)))
   (let [request (:body http-request)
         dataset (:dataset request)
         mapping (:mapping request)
