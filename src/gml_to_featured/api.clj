@@ -105,7 +105,8 @@
   (swap! stats update-in [:queued] pop)
   (let [result (download-file file)]
      (if (:download-error result)
-       (stats-on-callback callback-chan request (assoc request :error (:download-error result)))
+       (do (swap! stats assoc-in [:processing worker-id] nil)
+           (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri file))]
          (fs/safe-delete (:file result))
          (swap! stats assoc-in [:processing worker-id] nil)
