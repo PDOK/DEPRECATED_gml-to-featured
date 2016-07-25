@@ -141,8 +141,10 @@
        {:status 500, :body "No such file"})))
 
 (defn- callbacker [uri result]
-  (http/post uri {:body (cheshire.core/generate-string result)
-                  :headers {"Content-Type" "application/json"}}))
+  (try
+    (http/post uri {:body    (cheshire.core/generate-string result)
+                    :headers {"Content-Type" "application/json"}})
+    (catch Exception e (log/error "Callback error" e))))
 
 (defn api-routes [process-chan stats]
   (defroutes api-routes
