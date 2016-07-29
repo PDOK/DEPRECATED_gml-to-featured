@@ -174,17 +174,18 @@
                      (go (while true (process-xml2json* worker-id stats callback-chan (<! process-chan)))))]
     (config/create-workers factory-fn)))
 
-(defn rest-handler [& more]
-  (let [process-chan (chan 1000)
-        callback-chan (chan 10)
-        stats (atom {:processing {}
-                     :queued     (PersistentQueue/EMPTY)})]
-    (create-workers stats callback-chan process-chan)
-    (go (while true (apply callbacker (<! callback-chan))))
-    (-> (api-routes process-chan stats)
-        (wrap-json-body {:keywords? true :bigdecimals? true})
-        (wrap-json-response)
-        (wrap-defaults api-defaults)
-        (wrap-exception-handling))))
+(def process-chan (chan 1000))
+(def callback-chan (chan 10))
+(def stats (atom {:processing {}
+                        :queued     (PersistentQueue/EMPTY)}))
 
-(def app (routes (rest-handler)))
+(defn init! []
+  (create-workers stats callback-chan process-chan)
+  (go (while true (apply callbacker (<! callback-chan)))))
+
+(def app (-> (api-routes process-chan stats)
+             (wrap-json-body {:keywords? true :bigdecimals? true})
+             (wrap-json-response)
+             (wrap-defaults api-defaults)
+             (wrap-exception-handling)
+             (routes)))

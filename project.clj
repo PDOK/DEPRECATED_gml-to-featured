@@ -33,7 +33,8 @@
             [lein-filegen "0.1.0-SNAPSHOT"]]
   :ring {:port 4000
          :uberwar-name ~uberwar-name
-         :handler gml-to-featured.api/app}
+         :handler gml-to-featured.api/app
+         :init gml-to-featured.api/init!}
   :filegen [{:data ~(str version "(" git-ref ")")
              :template-fn #(str %1)
              :target "resources/version"}]
