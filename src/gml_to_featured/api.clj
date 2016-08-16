@@ -68,7 +68,7 @@
 (defn download-file [uri]
   "Download uri and get the body as stream. Returns :error key if an error occured"
   (let [tmp (File/createTempFile "gml-to-featured" (extract-name-from-uri uri))
-        {:keys [status body headers]} (http/get uri {:as :stream})]
+        {:keys [status body headers]} (http/get uri {:as :stream, :throw-exceptions false})]
     (if (nil? status)
       [:download-error (str "No response when trying to download: " uri)]
       (if (< status 300)
@@ -104,13 +104,20 @@
   (swap! stats assoc-in [:processing worker-id] (dissoc request :mapping))
   (swap! stats update-in [:queued] pop)
   (let [result (download-file file)]
-     (if (:download-error result)
-       (do (swap! stats assoc-in [:processing worker-id] nil)
-           (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
-       (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri file))]
-         (fs/safe-delete (:file result))
-         (swap! stats assoc-in [:processing worker-id] nil)
-         (stats-on-callback callback-chan request process-result)))))
+    (if (:download-error result)
+      (do
+        (log/error "Download error" result)
+        (swap! stats assoc-in [:processing worker-id] nil)
+        (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
+      (try
+        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri file))]
+          (fs/safe-delete (:file result))
+          (swap! stats assoc-in [:processing worker-id] nil)
+          (stats-on-callback callback-chan request process-result))
+        (catch Exception e
+          (log/error "Processing error" e)
+          (swap! stats assoc-in [:processing worker-id] nil)
+          (stats-on-callback callback-chan request (assoc request :error (str e))))))))
 
 (defn handle-xml2json-req [stats process-chan http-request]
   "Get the properties from the request and start an async xml2json operation"
