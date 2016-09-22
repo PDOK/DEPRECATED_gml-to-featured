@@ -78,8 +78,7 @@
 (defn translate-filesystem [dataset edn-config-location validity in-file out-file]
   (with-open [reader (clojure.java.io/reader in-file),
               writer (clojure.java.io/writer out-file)]
-    (translate dataset (slurp edn-config-location) validity reader writer))
-  (shutdown-agents))
+    (translate dataset (slurp edn-config-location) validity reader writer)))
 
 (defn error-msg [errors]
   (str "The following errors occurred while parsing your command:\n\n"
