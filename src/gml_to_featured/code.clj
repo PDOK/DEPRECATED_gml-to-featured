@@ -15,7 +15,8 @@
 
 (def key->fn {:s/tag `[tag]
               :s/id-attr `[id-attr]
-              :s/inner-gml `[inner-gml]})
+              :s/inner-gml `[inner-gml]
+              :s/geo-attr `[geo-attr]})
 
 (defn parse-selector-vector [key selector]
   (let [;; convert tags to fn, do use them in de xml1-> selector
@@ -85,9 +86,12 @@
 
 (defn function [name]
   (fn [& parameters]
-    [(str "~#" name) (apply params parameters)]))
+    ; use double vector --> outer vector is used as container (edn-mapping)
+    [[(str "~#" name) (apply params parameters)]]))
 
 (def moment (function "moment"))
+
+(def geo-attr (function "geo-attr"))
 
 (defn inner-gml [input]
   (let [inner (zip/down input)]
