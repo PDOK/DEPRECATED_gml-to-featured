@@ -5,8 +5,7 @@
 
 (defn translate-resource [resource element translator]
   (with-open [in (clojure.java.io/reader (clojure.java.io/resource resource))]
-    (binding [*sequence-selector* :content
-              *feature-selector* identity
+    (binding [*sequence-selector* identity
               *translators* {element translator}]
       (process-stream in))))
 
@@ -51,8 +50,7 @@
   (let [out (java.io.StringWriter.)]
     (testing "translate"
       (with-open [in (clojure.java.io/reader (clojure.java.io/resource "nested.xml"))]
-        (binding [*sequence-selector* :content
-                  *feature-selector* identity]
+        (binding [*sequence-selector* identity]
           (translate "dataset-1" (slurp "dev-resources/nested-config.edn") "2016-01-01" in out))
         (let [result (.toString out)]
           (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))

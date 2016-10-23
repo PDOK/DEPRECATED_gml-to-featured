@@ -6,10 +6,10 @@
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.string :as string]
             [clojure.tools.logging :as log])
-  (:gen-class))
+  (:gen-class)
+  (:import (javax.xml.stream.events XMLEvent)))
 
-(def ^:dynamic *sequence-selector* :content)
-(def ^:dynamic *feature-selector* #(-> % :content first))
+(def ^:dynamic *sequence-selector* identity)
 (def ^:dynamic *translators* {})
 
 (def unknown nil)
@@ -17,9 +17,8 @@
 (defn unknown-translator [_]
   unknown)
 
-(defn member->map [fm]
-  (let [feature (*feature-selector* fm)
-        translator (get *translators* (:tag feature) unknown-translator)
+(defn member->map [feature]
+  (let [translator (get *translators* (:tag feature) unknown-translator)
         translated (translator feature)]
     (if (sequential? translated)
       translated
@@ -34,12 +33,14 @@
       obj)))
 
 (defn process-stream [stream]
-  (let [log-progress (progress-logger)]
+  (let [log-progress (progress-logger)
+        sequence-selector (if (nil? *sequence-selector*) identity *sequence-selector*)]
     (->> stream
          (.createXMLEventReader xml/input-factory)
          (xml/pull-seq)
+         sequence-selector
          xml/event->tree
-         *sequence-selector*
+         :content
          (mapcat member->map)
          (map log-progress)
          (filter #(not= unknown %)))))
@@ -70,9 +71,20 @@
                'xml2json/nested           parse-translator-nested-tag
                'xml2json/multi parse-multi-tag}} config))
 
+(defn start-element-pred [element-name]
+  (fn [^XMLEvent e]
+    (and (.isStartElement e)
+         (= element-name (keyword (.getLocalPart (.getName (.asStartElement e))))))))
+
 (defn translate [dataset edn-config validity reader writer]
-  (let [translators (parse-config edn-config)]
-    (binding [*translators* translators]
+  (let [config (parse-config edn-config)
+        translators (if-let [t (:config/translators config)] t config)
+        sequence-element (:config/sequence-element config)
+        sequence-selector (if sequence-element
+                            (partial drop-while (comp not (start-element-pred sequence-element)))
+                            identity)]
+    (binding [*translators* translators
+              *sequence-selector* sequence-selector]
       (process reader writer dataset validity))))
 
 (defn translate-filesystem [dataset edn-config-location validity in-file out-file]
