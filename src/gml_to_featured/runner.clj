@@ -5,7 +5,8 @@
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.string :as string]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.zip :as z])
   (:gen-class)
   (:import (javax.xml.stream.events XMLEvent)))
 
@@ -19,10 +20,46 @@
 (defn unknown-translator [_]
   unknown)
 
+(defn get-path-and-feature [path-features]
+  (for [pf path-features]
+    (merge (map #(hash-map (merge (-> pf first) (:tag %1)) %1) (-> pf second :content)))
+    ))
+
+(defn unnest-features [nested path-depth]
+  (loop [iter 0
+         result nested]
+    (if (<= iter path-depth)
+      (recur (inc iter)
+             (if (seq? nested)
+               (flatten result)
+               (if (map? nested)
+                 (merge apply result)))
+             )
+      result)))
+
+(defn get-possible-paths [feature path-depth]
+  (let [f (z/xml-zip feature)
+        path (-> f first :tag)
+        result-firstnode {[path] (first f)}]
+    (loop [iter 1
+           result result-firstnode]
+      (if (<= iter path-depth)
+        (do
+          (if (< iter path-depth)
+            (let [paths-to-proces (filter #(= (count %) iter) (keys result))]
+              (recur (inc iter)
+                     (merge result (into {} (unnest-features (get-path-and-feature (select-keys result paths-to-proces)) iter)))
+))
+            result))
+        result))))
+
 (defn member->map [fm]
   (let [feature (*feature-identifier* fm)
-        translator (get *translators* (:tag feature) unknown-translator)
-        translated (translator (*feature-selector* fm))]
+        possible-paths-feature (get-possible-paths feature (apply max (map count (keys *translators*))))
+        selected-feature (first (select-keys possible-paths-feature (keys *translators*)))
+        translator (get *translators* (first selected-feature) unknown-translator)
+        translated (translator (*feature-selector* (second selected-feature)))
+        ]
     (if (sequential? translated)
       translated
       [translated])))
@@ -72,13 +109,17 @@
  (defn upgrade-comp [function-vector]
    (map (fn [symbol] (get fns symbol symbol)) function-vector))
 
+(defn get-path [filter-vector]
+  filter-vector)
+
   (defn parse-config [config]
     (edn/read-string
       {:readers {'xml2json/mappedcollection parse-translator-tag ;this reader-tag is deprecated
                  'xml2json/mapped           parse-translator-tag
                  'xml2json/nested           parse-translator-nested-tag
                  'xml2json/multi            parse-multi-tag
-                 'xml2json/comp             upgrade-comp}} config))
+                 'xml2json/comp             upgrade-comp
+                 'xml2json/path             get-path}} config))
 
   (defn start-element-pred [element-name]
     (fn [^XMLEvent e]
