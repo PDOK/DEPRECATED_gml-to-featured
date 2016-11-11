@@ -13,6 +13,10 @@
   (deftranslator :new
     [[:result [:first] [:second]]]))
 
+(def depth-translator
+  (deftranslator :new
+    [[:result [:third]]]))
+
 (def optional-gml-translator
   (deftranslator :new
     [[:result [:first :s/inner-gml] [:second :s/inner-gml]]]))
@@ -20,19 +24,24 @@
 (deftest optional-selector
   (testing "first is selected"
     (is (= "first inner"
-           (-> (translate-resource "optional1.xml" :element optional-translator) first :result))))
+           (-> (translate-resource "optional1.xml" [:element] optional-translator) first :result))))
   (testing "second is selected"
     (is (= "second inner"
-           (-> (translate-resource "optional2.xml" :element optional-translator) first :result)))
+           (-> (translate-resource "optional2.xml" [:element] optional-translator) first :result)))
     ))
+
+(deftest path-depth-selector
+  (testing "path-depth"
+    (is (= "third inner"
+           (-> (translate-resource "optional3.xml" [:element :first :second] depth-translator) first :result)))))
 
 (deftest optional-gml-selector
   (testing "first is selected"
     (is (= "<Point xmlns=\"\"></Point>"
-           (-> (translate-resource "optional-gml1.xml" :element optional-gml-translator) first :result :gml))))
+           (-> (translate-resource "optional-gml1.xml" [:element] optional-gml-translator) first :result :gml))))
   (testing "second is selected"
     (is (= "<Polygon xmlns=\"\"></Polygon>"
-           (-> (translate-resource "optional-gml2.xml" :element optional-gml-translator) first :result :gml)))
+           (-> (translate-resource "optional-gml2.xml" [:element] optional-gml-translator) first :result :gml)))
     ))
 
 (def nested-translator
@@ -42,7 +51,7 @@
 
 (deftest nested-selector
   (testing "nested input"
-    (let [translated (translate-resource "two-levels.xml" :element nested-translator)]
+    (let [translated (translate-resource "two-levels.xml" [:element] nested-translator)]
       (is (= "bar" (-> translated first :result-level1)))
       (is (= "foo" (-> translated first :result-level2))))))
 

@@ -1,0 +1,9 @@
+<toplevel>
+    <element>
+        <first>
+            <second>
+                <third>third inner</third>
+            </second>
+        </first>
+    </element>
+</toplevel>
