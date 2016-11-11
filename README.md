@@ -16,7 +16,7 @@ Do a POST to api/xml2json with the following body. Note this mapping is stored i
 				  :config/feature-identifier #xml2json/comp [first :content]
 				  :config/feature-selector #xml2json/comp [first :content]
 				  :config/translators 	
-					{:Gemeenten #xml2json/mapped {:type :new :mapping
+					{#xml2json/path [:Gemeenten] #xml2json/mapped {:type :new :mapping
 						[
 						 [:_id :s/id-attr]
 						 [:_collection :s/tag clojure.string/lower-case]
@@ -24,7 +24,7 @@ Do a POST to api/xml2json with the following body. Note this mapping is stored i
 						 :Gemeentenaam
 						  [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
 						 ]},
-					:Landsgrens #xml2json/mapped {:type :new :mapping
+					#xml2json/path [:Landsgrens] #xml2json/mapped {:type :new :mapping
 						[
 						 [:_id :s/id-attr]
 						 [:_collection :s/tag clojure.string/lower-case]
@@ -32,7 +32,7 @@ Do a POST to api/xml2json with the following body. Note this mapping is stored i
 						 :Landsnaam
 						  [:_geometry [:surfaceProperty :s/inner-gml][:multiSurfaceProperty :s/inner-gml]]
 						 ]},
-					:Provincies #xml2json/mapped {:type :new :mapping
+					#xml2json/path [:Provincies] #xml2json/mapped {:type :new :mapping
 						[
 						 [:_id :s/id-attr]
 						 [:_collection :s/tag clojure.string/lower-case]
@@ -83,7 +83,7 @@ lein run -- bestuurlijkegrenzen landsgrens.config '2016-11-11T11:11:11.000' Land
 {:config/sequence-element :FeatureCollection
 			 :config/feature-identifier #xml2json/comp [first :content]
 			 :config/feature-selector #xml2json/comp [first :content]
-			 :config/translators { :Landsgrens #xml2json/mapped 
+			 :config/translators { #xml2json/path [:Landsgrens] #xml2json/mapped 
 				{:type :new :mapping
                     [
                      [:_id :s/id-attr]
