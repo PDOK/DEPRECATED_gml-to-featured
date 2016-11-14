@@ -24,33 +24,36 @@
   (for [pf path-features]
     (merge (map #(hash-map (merge (-> pf first) (:tag %1)) %1) (-> pf second :content)))))
 
-(defn unnest-features [nested path-depth]
-  (loop [result nested
-         iter 0]
-    (if (>= iter path-depth)
-      result
-      (recur (flatten result)
-             (inc iter)))))
-
 (defn get-possible-paths [feature path-depth]
-  (let [f (z/xml-zip feature)
-        path (-> f first :tag)
-        result-firstnode {[path] (first f)}]
+  (let [first-feature (-> feature z/xml-zip first)
+        path (:tag first-feature)
+        result-firstnode {[path] first-feature}]
     (loop [result result-firstnode
            iter 1]
       (if (>= iter path-depth)
         result
         (let [paths-to-proces (filter #(= (count %) iter) (keys result))
-              result (merge result (into {} (unnest-features (get-path-and-feature (select-keys result paths-to-proces)) iter)))]
+              result (merge result
+                            (into {} (-> result
+                                         (#(select-keys % paths-to-proces))
+                                         get-path-and-feature
+                                         flatten)))]
           (recur result (inc iter)))))))
 
 (defn member->map [fm]
   (let [feature (*feature-identifier* fm)
-        path-depth (apply max (map count (keys *translators*)))
+        path-depth (-> *translators*
+                        keys
+                       ((partial map count))
+                       ((partial apply max)))
         possible-paths-feature (get-possible-paths feature path-depth)
-        selected-feature (first (select-keys possible-paths-feature (keys *translators*)))
+        selected-feature (-> *translators*
+                             keys
+                             (#(select-keys possible-paths-feature %))
+                             first)
         translator (get *translators* (first selected-feature) unknown-translator)
-        translated (translator (*feature-selector* (second selected-feature)))]
+        translated (-> selected-feature second *feature-selector* translator)
+        ]
     (if (sequential? translated)
       translated
       [translated])))
