@@ -1,5 +1,11 @@
-{:element #xml2json/mapped {:type :new :mapping
-                                  [
-                                   [:attr-k [:test :first]]
-                                   [:attr-l #xml2json/nested [[:attr-xyz [:iets :second]]]]
-                                   ]}}
+{:config/sequence-element :toplevel
+ :config/translators
+  {#xml2json/path [:element]
+   #xml2json/mapped {:type :new
+                     :mapping [
+                               [:attr-k [:test :first]]
+                               [:attr-l #xml2json/nested [[:attr-xyz [:iets :second]]]]
+                               ]
+                     }
+   }
+}
