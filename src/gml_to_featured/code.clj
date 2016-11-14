@@ -16,7 +16,7 @@
 (def key->fn {:s/tag `[tag]
               :s/id-attr `[id-attr]
               :s/inner-gml `[inner-gml]
-              :s/geo-attr `[geo-attr]})
+              :s/geometry `[geometry]})
 
 (defn parse-selector-vector [key selector]
   (let [;; convert tags to fn, do use them in de xml1-> selector
@@ -91,7 +91,7 @@
 
 (def moment (function "moment"))
 
-(def geo-attr (function "geo-attr"))
+(def geometry (function "geometry"))
 
 (defn inner-gml [input]
   (let [inner (zip/down input)]
