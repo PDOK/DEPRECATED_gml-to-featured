@@ -86,7 +86,9 @@
         (if-not @first?
           (.write writer ",\n")
           (dosync (ref-set first? false)))
-        (.write writer (json/generate-string (assoc f :_validity validity))))
+        (if validity
+          (.write writer (json/generate-string (assoc f :_validity validity)))
+          (.write writer (json/generate-string f))))
       (.write writer "]}")))
 
   (defn parse-translator-tag [expr]
@@ -164,7 +166,7 @@
   (defn usage [options-summary]
     (->> ["This program converts xml to featured-ready json. The conversion is done using the provided mappingconfig(uration) specified in edn."
           ""
-          "Usage: xml2featured [options] datasetname mappingconfig validity inputxml outputfile "
+          "Usage: xml2featured [options] datasetname mappingconfig inputxml outputfile "
           ""
           "Options:"
           options-summary
@@ -174,7 +176,8 @@
 
   (def cli-options
     [["-h" "--help"]
-     ["-v" "--version"]])
+     ["-v" "--version"]
+     [nil "--validity VALIDITY" "Sets validity [date-time-string] globally for all features"]])
 
   (defn -main [& args]
     (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
@@ -182,9 +185,7 @@
       (cond
         (:help options) (exit 0 (usage summary))
         (:version options) (exit 0 (implementation-version))
-        (not= (count arguments) 5) (exit 1 (usage summary))
+        (not= (count arguments) 4) (exit 1 (usage summary))
         errors (exit 1 (error-msg errors)))
       ;; Execute program with options
-      (if (= 5 (count args))
-        (translate-filesystem (nth args 0) (nth args 1) (nth args 2) (nth args 3) (nth args 4))
-        (exit 1 (usage summary)))))
+      (translate-filesystem (nth arguments 0) (nth arguments 1) (:validity options) (nth arguments 2) (nth arguments 3))))

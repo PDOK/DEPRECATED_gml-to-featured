@@ -69,14 +69,16 @@ Files are available for 48 hours after they have been created using xml2json
 ## On the commandline
 
 Do a commandline command in the root folder of the project with the following parameters.
-lein run -- [dataset name] 
-			[json configuration file for the mapping] 
-			[timestamp] 
-			[source file with features for transformation] 
-			[target file for the transformed features]
+``` 
+lein run -- --validity [timestamp] 
+            [dataset name] 
+            [json configuration file for the mapping] 
+            [source file with features for transformation] 
+            [target file for the transformed features]
+```
 
 ```
-lein run -- bestuurlijkegrenzen landsgrens.config '2016-11-11T11:11:11.000' Landsgrens.gml landsgrens.json
+lein run -- --validity='2016-11-11T11:11:11.000' bestuurlijkegrenzen landsgrens.config Landsgrens.gml landsgrens.json
 ```
 
 ```
