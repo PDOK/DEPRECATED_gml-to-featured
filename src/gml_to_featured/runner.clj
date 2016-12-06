@@ -6,14 +6,18 @@
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.string :as string]
             [clojure.tools.logging :as log]
-            [clojure.zip :as z])
+            [clojure.zip :as z]
+            [clj-time.format :as f])
   (:gen-class)
   (:import (javax.xml.stream.events XMLEvent)))
 
 (def ^:dynamic *sequence-selector* identity)
 (def ^:dynamic *feature-selector* identity)
 (def ^:dynamic *feature-identifier* identity)
+(def ^:dynamic *date-formatter* identity)
 (def ^:dynamic *translators* {})
+
+(def default-datetime-formatter (f/formatters :date-hour-minute-second-ms))
 
 (def unknown nil)
 
@@ -100,6 +104,12 @@
   (defn parse-multi-tag [mappings]
     (eval (code/multi mappings)))
 
+  (defn todate [datestring]
+    (if datestring
+      (f/unparse
+        default-datetime-formatter
+        (f/parse *date-formatter* datestring))))
+
  (def fns {'first clojure.core/first})
 
  (defn upgrade-comp [function-vector]
@@ -133,6 +143,10 @@
           feature-identifier (if feature-identifier
                              (apply comp feature-identifier)
                              identity)
+          date-formatter (:config/date-formatter config)
+          date-formatter (if date-formatter
+                           (f/formatter date-formatter)
+                           (f/formatters :date-hour-minute-second-ms))
           feature-selector (:config/feature-selector config)
           feature-selector (if feature-selector
                                (apply comp feature-selector)
@@ -141,6 +155,7 @@
       (binding [*translators* translators
                 *sequence-selector* sequence-selector
                 *feature-identifier* feature-identifier
+                *date-formatter* date-formatter
                 *feature-selector* feature-selector]
         (process reader writer dataset validity))))
 
