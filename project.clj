@@ -14,7 +14,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :repositories [["local" "file:repo"]]
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [clj-time "0.11.0"]
+                 [clj-time "0.12.2"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.clojure/data.zip "0.1.1"]
                  [org.clojure/tools.cli "0.3.3"]
