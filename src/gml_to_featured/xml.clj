@@ -80,7 +80,10 @@
 (defn xml1->
   "Returns the first item from loc based on the query predicates
   given.  See xml->"
-  [loc & preds] (first (apply xml-> loc preds)))
+  [loc & preds] (let [result (apply xml-> loc preds)]
+                  (if (= 1 (count result))
+                    (first result)
+                    result)))
 
 (defn pull-seq
   [^XMLEventReader reader]
