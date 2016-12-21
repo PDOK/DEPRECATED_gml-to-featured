@@ -13,6 +13,10 @@
   (deftranslator :new
     [[:result [:first] [:second]]]))
 
+(def double-element-translator
+  (deftranslator :new
+                 [[:result [:fourth]]]))
+
 (def depth-translator
   (deftranslator :new
     [[:result [:third]]]))
@@ -34,6 +38,11 @@
   (testing "path-depth"
     (is (= "third inner"
            (-> (translate-resource "optional3.xml" [:element :first :second] depth-translator) first :result)))))
+
+(deftest double-element-selector
+  (testing "selecting double xml elements"
+    (is (= ["first inner", "second inner"]
+           (-> (translate-resource "optional4.xml" [:element] double-element-translator) first :result)))))
 
 (deftest optional-gml-selector
   (testing "first is selected"
