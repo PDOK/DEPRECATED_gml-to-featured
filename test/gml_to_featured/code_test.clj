@@ -43,7 +43,7 @@
 
 (def extension
   `(deftranslator :new base
-     [:selector2]))
+     [:selector2] (constantly false)))
 
 (deftest extension-test
   (testing "translator with base"

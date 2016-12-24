@@ -77,13 +77,16 @@
                           (string?  %) (text= %)
                           (vector?  %) (seq-test %))))
 
+(defn xmlN->
+  "Returns vector of items from loc based on the query predicates\n  given.  See xml->"
+  [loc & preds]
+  (into [] (apply xml-> loc preds)))
+
 (defn xml1->
   "Returns the first item from loc based on the query predicates
   given.  See xml->"
-  [loc & preds] (let [result (apply xml-> loc preds)]
-                  (if (< 1 (count result))
-                    result
-                    (first result))))
+  [loc & preds]
+  (first (apply xml-> loc preds)))
 
 (defn pull-seq
   [^XMLEventReader reader]

@@ -41,26 +41,28 @@
         `[~key [~(parse-selector-vector key rest)]]))
     `[~s [[[~(keyword (hyphenated->camel (name s))) text] nil]]]))
 
-(defn apply-translator [translators]
-  (letfn [;f is a list of functions and will be executed on the selection (s); example f=s/uppercase
-          (translate [[s f]] (if f
-                               (if (and (= 1 (count f)) (string? (first f)))
-                                 (first f)
-                                 `(-> (xml1-> ~'zp ~@s) ~@f))
-                               `(xml1-> ~'zp ~@s)))]
-    (cond
-      (fn? translators)
-       `(~translators ~'feature)
-      (> (count translators) 1)
+(defn apply-translator [multi? translators]
+  (let [select-> (if multi? `xmlN-> `xml1->)]
+    (letfn [;f is a list of functions and will be executed on the selection (s); example f=s/uppercase
+            (translate [[s f]] (if f
+                                 (if (and (= 1 (count f)) (string? (first f)))
+                                   (first f)
+                                   `(-> (~select-> ~'zp ~@s) ~@f))
+                                 `(~select-> ~'zp ~@s)))]
+      (cond
+        (fn? translators)
+        `(~translators ~'feature)
+        (> (count translators) 1)
         (let [ts (map translate translators)]
           `(or ~@ts))
-      :else
-        (translate (first translators)))))
+        :else
+        (translate (first translators))))))
 
 (defn translator
-  ([selectors] (translator nil selectors))
-  ([action selectors] (translator action [] selectors))
-  ([action base selectors]
+  ([selectors] (translator nil selectors (constantly false)))
+  ([selectors fn-multi-element?] (translator nil selectors fn-multi-element?))
+  ([action selectors fn-multi-element?] (translator action [] selectors fn-multi-element?))
+  ([action base selectors fn-multi-element?]
    (let [translators
          (for [s (concat (eval base) (eval selectors))]
            (parse-selector s))]
@@ -68,7 +70,7 @@
         (let [~'zp (if (zip? ~'feature)
                      ~'feature
                      (zip/xml-zip ~'feature))]
-          ~(reduce (fn [acc [k t]] (assoc acc k (apply-translator t)))
+          ~(reduce (fn [acc [k t]] (assoc acc k (apply-translator ((eval fn-multi-element?) k) t)))
                      (if action {:_action action} {}) translators))))))
 
 (defn multi [mappings]
@@ -77,8 +79,9 @@
       ((apply juxt mappings) zipper))))
 
 (defmacro deftranslator
-  ([action selectors] (translator action selectors))
-  ([action base selectors] (translator action base selectors)))
+  ([action selectors] (translator action selectors (constantly false)))
+  ([action selectors fn-multi-element?] (translator action selectors fn-multi-element?))
+  ([action base selectors fn-multi-element?] (translator action base selectors fn-multi-element?)))
 
 (defn params [& params]
   (if (first params)

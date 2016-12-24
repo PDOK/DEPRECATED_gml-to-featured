@@ -56,8 +56,7 @@
                              (#(select-keys possible-paths-feature %))
                              first)
         translator (get *translators* (first selected-feature) unknown-translator)
-        translated (-> selected-feature second *feature-selector* translator)
-        ]
+        translated (-> selected-feature second *feature-selector* translator)]
     (if (sequential? translated)
       translated
       [translated])))
@@ -96,7 +95,7 @@
       (.write writer "]}")))
 
   (defn parse-translator-tag [expr]
-    (eval (code/translator (:type expr) (:mapping expr))))
+    (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))
 
   (defn parse-translator-nested-tag [mapping]
     (eval (code/translator mapping)))
