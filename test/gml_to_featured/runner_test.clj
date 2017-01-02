@@ -15,7 +15,7 @@
 
 (def double-element-translator
   (deftranslator :new
-                 [[:result [:fourth]]]))
+                 [[:result [:fourth]]] (constantly true)))
 
 (def depth-translator
   (deftranslator :new
@@ -42,7 +42,12 @@
 (deftest double-element-selector
   (testing "selecting double xml elements"
     (is (= ["first inner", "second inner"]
-           (-> (translate-resource "optional4.xml" [:element] double-element-translator) first :result)))))
+           (-> (translate-resource "double-element.xml" [:element] double-element-translator) first :result)))))
+
+(deftest single-element-selector
+  (testing "selecting single xml elements as vector/array"
+    (is (= ["single inner"]
+           (-> (translate-resource "single-element.xml" [:element] double-element-translator) first :result)))))
 
 (deftest optional-gml-selector
   (testing "first is selected"
