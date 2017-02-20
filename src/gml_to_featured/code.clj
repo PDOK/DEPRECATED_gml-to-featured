@@ -16,6 +16,8 @@
 (def key->fn {:s/tag `[tag]
               :s/id-attr `[id-attr]
               :s/inner-gml `[inner-gml]
+              :s/boolean `[text boolean (function "boolean")]
+              :s/int `[text #(. Integer parseInt %) (function "int")]
               :s/geometry `[geometry]})
 
 (defn parse-selector-vector [key selector]
