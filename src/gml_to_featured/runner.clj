@@ -9,7 +9,8 @@
             [clojure.zip :as z]
             [clj-time.format :as f])
   (:gen-class)
-  (:import (javax.xml.stream.events XMLEvent)))
+  (:import (java.util.zip ZipOutputStream)
+           (javax.xml.stream.events XMLEvent)))
 
 (def ^:dynamic *sequence-selector* identity)
 (def ^:dynamic *feature-selector* identity)
@@ -82,17 +83,18 @@
            (map log-progress)
            (filter #(not= unknown %)))))
 
-  (defn process [reader writer dataset-name validity]
-    (let [first? (ref true)]
-      (.write writer (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
+  (defn process [reader, ^ZipOutputStream writer, dataset-name, validity]
+    (let [first? (ref true)
+          write-fn (fn [^String str] (.write writer (.getBytes str)))]
+      (write-fn (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
       (doseq [f (process-stream reader)]
         (if-not @first?
-          (.write writer ",\n")
+          (write-fn ",\n")
           (dosync (ref-set first? false)))
         (if validity
-          (.write writer (json/generate-string (assoc f :_validity validity)))
-          (.write writer (json/generate-string f))))
-      (.write writer "]}")))
+          (write-fn (json/generate-string (assoc f :_validity validity)))
+          (write-fn (json/generate-string f))))
+      (write-fn "]}")))
 
   (defn parse-translator-tag [expr]
     (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))

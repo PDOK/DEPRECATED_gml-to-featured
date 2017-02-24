@@ -31,8 +31,11 @@
 (defn uuid []
   (str (UUID/randomUUID)))
 
+(defn json-filename [original-filename]
+  (str (uuid) "-" original-filename ".json"))
+
 (defn create-target-file [name]
-  (io/file resultstore (str (uuid) "-" name ".json")))
+  (io/file resultstore (str name ".zip")))
 
 (defn get-file [name]
   (let [file (io/file resultstore name)]
