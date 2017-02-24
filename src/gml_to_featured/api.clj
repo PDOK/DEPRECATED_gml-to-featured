@@ -6,10 +6,9 @@
             [ring.util.response :as r]
             [ring.middleware.json :refer :all]
             [ring.middleware.defaults :refer :all]
-            [clj-time [core :as t] [local :as tl]]
+            [clj-time [local :as tl]]
             [compojure.core :refer :all]
             [compojure.route :as route]
-            [schema.core :as s]
             [clj-http.client :as http]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
@@ -20,6 +19,7 @@
             [clojure.java.io :as io])
   (:gen-class)
   (:import (clojure.lang PersistentQueue)
+           (com.fasterxml.jackson.core JsonGenerator)
            (java.io File FileInputStream)
            (java.net URI URISyntaxException)
            (java.util.zip ZipEntry ZipFile ZipOutputStream)
@@ -27,7 +27,7 @@
 
 (extend-protocol cheshire.generate/JSONable
   DateTime
-  (to-json [t jg] (.writeString jg (str t))))
+  (to-json [t, ^JsonGenerator jg] (.writeString jg (str t))))
 
 (defn- translate-file-from-stream [reader, dataset, mapping, validity, ^String json-filename]
   "Read from reader, xml2json translate the content"

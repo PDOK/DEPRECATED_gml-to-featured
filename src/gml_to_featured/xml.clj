@@ -1,12 +1,9 @@
 (ns gml-to-featured.xml
-  (:require [clojure.data.xml :as xml]
-            [clojure.zip :as zip]
+  (:require [clojure.zip :as zip]
             [clojure.data.zip :as zf])
   (:import [java.io ByteArrayOutputStream]
-           [javax.xml.namespace QName]
-           [javax.xml.stream XMLInputFactory XMLOutputFactory XMLEventReader
-            XMLStreamConstants XMLEventWriter]
-           [javax.xml.stream.events XMLEvent EndElement]))
+           [javax.xml.stream XMLEventReader XMLEventWriter XMLInputFactory XMLOutputFactory XMLStreamConstants]
+           [javax.xml.stream.events Attribute EndElement XMLEvent]))
 
 (def ^XMLInputFactory input-factory (XMLInputFactory/newFactory))
 
@@ -26,7 +23,7 @@
 
 (defn attr-with-name [loc attrname]
   "Get the attribute with attrname. Alternative implementation for attr"
-  (some #(if (= (.getLocalPart (.getName %)) attrname) (.getValue %)) (:attrs (zip/node loc))))
+  (some (fn [^Attribute a] (if (= (.getLocalPart (.getName a)) attrname) (.getValue a))) (:attrs (zip/node loc))))
 
 (defn id-attr [loc]
   (attr-with-name loc "id"))

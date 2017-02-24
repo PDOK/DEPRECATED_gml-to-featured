@@ -3,10 +3,11 @@
             [gml-to-featured.config :refer [env] :as config]
             [clj-time.core :as time]
             clj-time.coerce)
-  (:import (java.util UUID)))
+  (:import (java.io File)
+           (java.util UUID)))
 
 (def resultstore
-  (let [path config/store-dir]
+  (let [^File path config/store-dir]
     (when-not (.exists path) (.mkdirs path))
     path))
 
