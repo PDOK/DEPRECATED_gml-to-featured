@@ -3,7 +3,9 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [environ.core :as environ]))
+            [environ.core :as environ])
+  (:import (java.io Reader)
+           (java.util Properties)))
 
 (Thread/setDefaultUncaughtExceptionHandler
   (reify Thread$UncaughtExceptionHandler
@@ -18,8 +20,8 @@
       (keyword)))
 
 (defn load-props [resource-file]
-  (with-open [^java.io.Reader reader (io/reader (io/resource resource-file))]
-    (let [props (java.util.Properties.)
+  (with-open [^Reader reader (io/reader (io/resource resource-file))]
+    (let [props (Properties.)
           _ (.load props reader)]
       (into {} (for [[k v] props
                      ;; no mustaches, for local use

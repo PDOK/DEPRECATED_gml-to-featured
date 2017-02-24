@@ -9,7 +9,8 @@
             [clojure.zip :as z]
             [clj-time.format :as f])
   (:gen-class)
-  (:import (java.util.zip ZipOutputStream)
+  (:import (java.io InputStream)
+           (java.util.zip ZipOutputStream)
            (javax.xml.stream.events XMLEvent)))
 
 (def ^:dynamic *sequence-selector* identity)
@@ -70,7 +71,7 @@
           (log/info "Processed " @counter))
         obj)))
 
-  (defn process-stream [stream]
+  (defn process-stream [^InputStream stream]
     (let [log-progress (progress-logger)
           sequence-selector (if (nil? *sequence-selector*) identity *sequence-selector*)]
       (->> stream
@@ -176,7 +177,7 @@
   (defn implementation-version []
     (if-let [version (System/getProperty "gml-to-featured.version")]
       version
-      (-> ^java.lang.Class (eval 'gml_to_featured.runner) .getPackage .getImplementationVersion)))
+      (-> ^Class (eval 'gml_to_featured.runner) .getPackage .getImplementationVersion)))
 
   (defn usage [options-summary]
     (->> ["This program converts xml to featured-ready json. The conversion is done using the provided mappingconfig(uration) specified in edn."
