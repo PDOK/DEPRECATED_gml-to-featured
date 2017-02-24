@@ -1,10 +1,11 @@
 (ns gml-to-featured.runner-test
   (:require [gml-to-featured.runner :refer :all]
             [gml-to-featured.code :refer :all]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all])
+  (:import (java.io ByteArrayOutputStream)))
 
 (defn translate-resource [resource element translator]
-  (with-open [in (clojure.java.io/reader (clojure.java.io/resource resource))]
+  (with-open [in (clojure.java.io/input-stream (clojure.java.io/resource resource))]
     (binding [*sequence-selector* identity
               *translators* {element translator}]
       (process-stream in))))
@@ -70,12 +71,12 @@
       (is (= "foo" (-> translated first :result-level2))))))
 
 (deftest test-translate
-  (let [out (java.io.StringWriter.)]
-    (testing "translate"
-      (with-open [in (clojure.java.io/reader (clojure.java.io/resource "nested.xml"))]
-        (binding [*sequence-selector* identity]
-          (translate "dataset-1" (slurp "dev-resources/nested-config.edn") "2016-01-01" in out))
-        (let [result (.toString out)]
-          (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))
-          (is (= true (boolean (re-find #"\"attr-k\":\"foo\"" result))))
-          (is (= true (boolean (re-find #"\"attr-l\":\{\"attr-xyz\":\"bar\"\}" result)))))))))
+  (testing "translate"
+    (with-open [in (clojure.java.io/input-stream (clojure.java.io/resource "nested.xml"))
+                out (ByteArrayOutputStream.)]
+      (binding [*sequence-selector* identity]
+        (translate "dataset-1" (slurp "dev-resources/nested-config.edn") "2016-01-01" in out))
+      (let [result (.toString out)]
+        (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))
+        (is (= true (boolean (re-find #"\"attr-k\":\"foo\"" result))))
+        (is (= true (boolean (re-find #"\"attr-l\":\{\"attr-xyz\":\"bar\"\}" result))))))))

@@ -9,8 +9,7 @@
             [clojure.zip :as z]
             [clj-time.format :as f])
   (:gen-class)
-  (:import (java.io InputStream)
-           (java.util.zip ZipOutputStream)
+  (:import (java.io InputStream OutputStream)
            (javax.xml.stream.events XMLEvent)))
 
 (def ^:dynamic *sequence-selector* identity)
@@ -84,7 +83,7 @@
            (map log-progress)
            (filter #(not= unknown %)))))
 
-  (defn process [reader, ^ZipOutputStream writer, dataset-name, validity]
+  (defn process [reader, ^OutputStream writer, dataset-name, validity]
     (let [first? (ref true)
           write-fn (fn [^String str] (.write writer (.getBytes str)))]
       (write-fn (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
