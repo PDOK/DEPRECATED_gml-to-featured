@@ -19,79 +19,83 @@
                      alts! alts!! timeout]]
             [clojure.java.io :as io])
   (:gen-class)
-  (:import (org.joda.time DateTime)
-           (java.util.zip ZipFile)
-           (java.io FileInputStream File)
-           (clojure.lang PersistentQueue)))
+  (:import (clojure.lang PersistentQueue)
+           (java.io File FileInputStream)
+           (java.net URI URISyntaxException)
+           (java.util.zip ZipEntry ZipFile ZipOutputStream)
+           (org.joda.time DateTime)))
 
 (extend-protocol cheshire.generate/JSONable
   DateTime
   (to-json [t jg] (.writeString jg (str t))))
 
-(defn- translate-file-from-stream [reader dataset mapping validity out-file]
+(defn- translate-file-from-stream [reader, dataset, mapping, validity, ^String json-filename]
   "Read from reader, xml2json translate the content"
-  (with-open [writer (io/writer out-file)]
-    (runner/translate dataset mapping validity reader writer)))
+  (let [compressed-file (fs/create-target-file json-filename)]
+    (with-open [output-stream (io/output-stream compressed-file)
+                zip (ZipOutputStream. output-stream)]
+      (.putNextEntry zip (ZipEntry. json-filename))
+      (runner/translate dataset mapping validity reader zip)
+      (.closeEntry zip))
+    compressed-file))
 
-(defn- translate-file-from-zipentry [dataset mapping validity zipfile entry]
+(defn- translate-file-from-zipentry [dataset, mapping, validity, ^ZipFile zipfile, ^ZipEntry entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
-  (let [resulting-file (fs/create-target-file (.getName (File. (.getName entry))))
+  (let [json-filename (fs/json-filename (.getName (File. (.getName entry))))
         entry-stream (.getInputStream zipfile entry)]
-    (log/debug "Going to transform zip-entry" (.getName entry) "to" (.getPath resulting-file))
-    (translate-file-from-stream entry-stream dataset mapping validity resulting-file)
-    (.close entry-stream)
-    resulting-file))
+    (log/debug "Going to transform zip entry" (.getName entry) "to" json-filename)
+    (let [resulting-file (translate-file-from-stream entry-stream dataset mapping validity json-filename)]
+      (.close entry-stream)
+      resulting-file)))
 
-(defn- translate-from-zipfile [^File file dataset mapping validity]
+(defn- translate-from-zipfile [^File file, dataset, mapping, validity]
   "Transforms entries in a zip file and returns a vector with the transformed files"
   (with-open [zip (ZipFile. file)]
     (into [] (map (partial translate-file-from-zipentry
-                              dataset
-                              mapping
-                              validity
-                              zip) (zip/xml-entries zip)))))
+                           dataset
+                           mapping
+                           validity
+                           zip) (zip/xml-entries zip)))))
 
-
-(defn translate-entire-file [zipped file dataset mapping validity original-filename]
+(defn translate-entire-file [zipped, ^File file, dataset, mapping, validity, original-filename]
   "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if zipped
     (translate-from-zipfile file dataset mapping validity)
-    (let [target-filename (fs/create-target-file original-filename)]
+    (let [json-filename (fs/json-filename original-filename)]
+      (log/debug "Going to transform file" original-filename "to" json-filename)
       (with-open [stream (FileInputStream. file)]
-        (do (translate-file-from-stream stream dataset mapping validity target-filename))
-        [target-filename]))))
+        [(translate-file-from-stream stream dataset mapping validity json-filename)]))))
 
-(defn extract-name-from-uri [uri]
-  "Extract the requested-path from an uri"
-  (last (re-find #"(\w+).(?:\w+)$" uri)))
+(defn extract-filename [headers, ^String uri]
+  "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
+  (let [filename-from-header (last (re-find #"filename=\"?([^\";]+)" (:content-disposition headers)))
+        filename-from-uri (try (last (re-find #"([^\/]+)$" (.getPath (URI. uri)))) (catch URISyntaxException e nil))]
+    (or filename-from-header filename-from-uri "data")))
 
 (defn download-file [uri]
   "Download uri and get the body as stream. Returns :error key if an error occured"
-  (let [tmp (File/createTempFile "gml-to-featured" (extract-name-from-uri uri))
-        {:keys [status body headers]} (http/get uri {:as :stream, :throw-exceptions false})]
+  (let [{:keys [status body headers]} (http/get uri {:as :stream, :throw-exceptions false})]
     (if (nil? status)
       [:download-error (str "No response when trying to download: " uri)]
       (if (< status 300)
-        (do
+        (let [original-filename (extract-filename headers uri)
+              tmp (File/createTempFile "gml-to-featured" original-filename)]
           (io/copy body tmp)
           (.close body)
           {:zipped (re-find #"zip" (:content-type headers))
-           :file   tmp})
-        {:download-error (str "No success: Got a statuscode " status " when downloading " uri )}))))
+           :file tmp
+           :original-filename original-filename})
+        {:download-error (str "No success: Got a statuscode " status " when downloading " uri)}))))
 
 (defn process-downloaded-xml2json-data [datasetname mapping validity zipped data-file original-filename]
   (log/info "Going to transform dataset" datasetname)
-  (let [unzipped-files (translate-entire-file zipped
-                                                data-file
-                                                datasetname
-                                                mapping
-                                                validity
-                                                original-filename)
-        zipped-files (doall (map zip/zip-file unzipped-files))]
-    (log/info "Transformation of" (count unzipped-files) "file(s) done")
-    (fs/delete-files unzipped-files)
-    (log/info "Unzipped files removed")
-    (log/info "Zipped" (count zipped-files) "file(s) in store-directory")
+  (let [zipped-files (translate-entire-file zipped
+                                            data-file
+                                            datasetname
+                                            mapping
+                                            validity
+                                            original-filename)]
+    (log/info "Created" (count zipped-files) "zip file(s) in store directory")
     {:json-files (map #(config/create-url (str "api/get/" (.getName %))) zipped-files)}))
 
 (defn stats-on-callback [callback-chan request stats]
@@ -110,7 +114,8 @@
         (swap! stats assoc-in [:processing worker-id] nil)
         (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
       (try
-        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result) (extract-name-from-uri file))]
+        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result)
+                                                               (:original-filename result))]
           (fs/safe-delete (:file result))
           (swap! stats assoc-in [:processing worker-id] nil)
           (stats-on-callback callback-chan request process-result))
@@ -141,8 +146,8 @@
      (log/debug "Request for" file)
      (if-let [local-file (fs/get-file file)]
        {:headers {"Content-Description"       "File Transfer"
-                  "Content-type"              "application/octet-stream"
-                  "Content-Disposition"       (str "attachment;filename=" (.getName local-file))
+                  "Content-Type"              "application/octet-stream"
+                  "Content-Disposition"       (str "attachment; filename=" (.getName local-file))
                   "Content-Transfer-Encoding" "binary"}
         :body    local-file}
        {:status 500, :body "No such file"})))
