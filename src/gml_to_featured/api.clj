@@ -68,9 +68,12 @@
 
 (defn extract-filename [headers, ^String uri]
   "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
-  (let [filename-from-header (last (re-find #"filename=\"?([^\";]+)" (:content-disposition headers)))
-        filename-from-uri (try (last (re-find #"([^\/]+)$" (.getPath (URI. uri)))) (catch URISyntaxException e nil))]
-    (or filename-from-header filename-from-uri "data")))
+  (if-let [content-disposition (:content-disposition headers)]
+    (last (re-find #"filename=\"?([^\";]+)" content-disposition))
+    (try 
+      (last (re-find #"([^\/]+)$" (.getPath (URI. uri))))
+      (catch URISyntaxException e 
+        "data"))))
 
 (defn download-file [uri]
   "Download uri and get the body as stream. Returns :error key if an error occured"
@@ -128,6 +131,7 @@
   "Get the properties from the request and start an async xml2json operation"
   (future (fs/cleanup-old-files (* 3600 24 config/cleanup-threshold)))
   (let [request (:body http-request)
+        _ (println request)
         dataset (:dataset request)
         mapping (:mapping request)
         file (:file request)
