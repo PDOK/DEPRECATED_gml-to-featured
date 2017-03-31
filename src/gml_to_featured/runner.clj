@@ -161,8 +161,8 @@
         (process reader writer dataset validity))))
 
   (defn translate-filesystem [dataset edn-config-location validity in-file out-file]
-    (with-open [reader (clojure.java.io/reader in-file),
-                writer (clojure.java.io/writer out-file)]
+    (with-open [reader (clojure.java.io/input-stream in-file),
+                writer (clojure.java.io/output-stream out-file)]
       (translate dataset (slurp edn-config-location) validity reader writer)))
 
   (defn error-msg [errors]
