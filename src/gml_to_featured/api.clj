@@ -68,7 +68,7 @@
 
 (defn extract-filename [headers, ^String uri]
   "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
-  (let [filename-from-header (last (re-find #"filename=\"?([^\";]+)" (:content-disposition headers)))
+  (let [filename-from-header (last (re-find #"filename=\"?([^\";]+)" (or (:content-disposition headers) "")))
         filename-from-uri (try (last (re-find #"([^\/]+)$" (.getPath (URI. uri)))) (catch URISyntaxException e nil))]
     (or filename-from-header filename-from-uri "data")))
 
