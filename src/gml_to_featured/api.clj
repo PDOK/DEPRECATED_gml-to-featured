@@ -20,37 +20,34 @@
   (:gen-class)
   (:import (clojure.lang PersistentQueue)
            (com.fasterxml.jackson.core JsonGenerator)
-           (java.io File FileInputStream)
+           (java.io File FileInputStream FilterInputStream)
            (java.net URI URISyntaxException)
-           (java.util.zip ZipEntry ZipFile ZipOutputStream)
+           (java.util.zip ZipEntry ZipInputStream ZipOutputStream)
            (org.joda.time DateTime)))
 
 (extend-protocol cheshire.generate/JSONable
   DateTime
   (to-json [t, ^JsonGenerator jg] (.writeString jg (str t))))
 
-(defn- translate-file-from-stream [reader, dataset, mapping, validity, ^String json-filename]
+(defn- translate-file-from-stream [stream, dataset, mapping, validity, ^String json-filename]
   "Read from reader, xml2json translate the content"
   (let [compressed-file (fs/create-target-file json-filename)]
     (with-open [output-stream (io/output-stream compressed-file)
                 zip (ZipOutputStream. output-stream)]
       (.putNextEntry zip (ZipEntry. json-filename))
-      (runner/translate dataset mapping validity reader zip)
+      (runner/translate dataset mapping validity stream zip)
       (.closeEntry zip))
     compressed-file))
 
-(defn- translate-file-from-zipentry [dataset, mapping, validity, ^ZipFile zipfile, ^ZipEntry entry]
+(defn- translate-file-from-zipentry [dataset, mapping, validity, stream, ^ZipEntry entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
-  (let [json-filename (fs/json-filename (.getName (File. (.getName entry))))
-        entry-stream (.getInputStream zipfile entry)]
+  (let [json-filename (fs/json-filename (.getName (File. (.getName entry))))]
     (log/debug "Going to transform zip entry" (.getName entry) "to" json-filename)
-    (let [resulting-file (translate-file-from-stream entry-stream dataset mapping validity json-filename)]
-      (.close entry-stream)
-      resulting-file)))
+    (translate-file-from-stream stream dataset mapping validity json-filename)))
 
 (defn- translate-from-zipfile [^File file, dataset, mapping, validity]
   "Transforms entries in a zip file and returns a vector with the transformed files"
-  (with-open [zip (ZipFile. file)]
+  (with-open [zip (ZipInputStream. (io/input-stream file))]
     (into [] (map (partial translate-file-from-zipentry
                            dataset
                            mapping
