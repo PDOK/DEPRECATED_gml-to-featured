@@ -1,7 +1,7 @@
 (ns gml-to-featured.zip
   (:import (java.util.zip ZipEntry ZipInputStream)))
-  
-(defn xml-entries 
+
+(defn xml-entries
   [^ZipInputStream is]
   (->> is
     (repeat)

@@ -20,7 +20,7 @@
   (:gen-class)
   (:import (clojure.lang PersistentQueue)
            (com.fasterxml.jackson.core JsonGenerator)
-           (java.io File FileInputStream FilterInputStream InputStream)
+           (java.io File)
            (java.net URI URISyntaxException)
            (java.util.zip ZipEntry ZipInputStream ZipOutputStream)
            (org.joda.time DateTime)))
@@ -29,7 +29,7 @@
   DateTime
   (to-json [t, ^JsonGenerator jg] (.writeString jg (str t))))
 
-(defn- translate-file-from-stream [^InputStream stream, dataset, mapping, validity, ^String json-filename]
+(defn- translate-file-from-stream [stream, dataset, mapping, validity, ^String json-filename]
   "Read from reader, xml2json translate the content"
   (let [compressed-file (fs/create-target-file json-filename)]
     (with-open [output-stream (io/output-stream compressed-file)
@@ -45,7 +45,7 @@
     (log/debug "Going to transform zip entry" (.getName entry) "to" json-filename)
     (translate-file-from-stream stream dataset mapping validity json-filename)))
 
-(defn- translate-from-zipfile [^InputStream stream, dataset, mapping, validity]
+(defn- translate-from-zipfile [stream dataset mapping validity]
   "Transforms entries in a zip file and returns a vector with the transformed files"
   (with-open [zip (ZipInputStream. (io/input-stream stream))]
     (into [] (map (partial translate-file-from-zipentry
@@ -54,14 +54,14 @@
                            validity
                            zip) (zip/xml-entries zip)))))
 
-(defn translate-entire-file [zipped, ^InputStream stream, dataset, mapping, validity, original-filename]
+(defn translate-entire-file [zipped stream dataset mapping validity original-filename]
   "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if zipped
     (translate-from-zipfile stream dataset mapping validity)
     (let [json-filename (fs/json-filename original-filename)]
       (log/debug "Going to transform file" original-filename "to" json-filename)
-      (with-open [stream (FileInputStream. stream)]
-        [(translate-file-from-stream stream dataset mapping validity json-filename)]))))
+      (with-open [buffered-stream (io/input-stream stream)]
+        [(translate-file-from-stream buffered-stream dataset mapping validity json-filename)]))))
 
 (defn extract-filename [headers, ^String uri]
   "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
@@ -81,7 +81,7 @@
            :original-filename (extract-filename headers uri)}
           {:download-error (str "No success: Got a statuscode " status " when downloading " uri)})))))
 
-(defn process-downloaded-xml2json-data [datasetname mapping validity zipped ^InputStream stream original-filename]
+(defn process-downloaded-xml2json-data [datasetname mapping validity zipped stream original-filename]
   (log/info "Going to transform dataset" datasetname)
   (let [zipped-files (translate-entire-file zipped
                                             stream
@@ -108,8 +108,8 @@
         (swap! stats assoc-in [:processing worker-id] nil)
         (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
       (try
-        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:stream result)
-                                                               (:original-filename result))]
+        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result)
+                                                               (:stream result) (:original-filename result))]
           (swap! stats assoc-in [:processing worker-id] nil)
           (stats-on-callback callback-chan request process-result))
         (catch Exception e
