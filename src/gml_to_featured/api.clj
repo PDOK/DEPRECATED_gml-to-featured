@@ -20,51 +20,48 @@
   (:gen-class)
   (:import (clojure.lang PersistentQueue)
            (com.fasterxml.jackson.core JsonGenerator)
-           (java.io File FileInputStream)
+           (java.io File)
            (java.net URI URISyntaxException)
-           (java.util.zip ZipEntry ZipFile ZipOutputStream)
+           (java.util.zip ZipEntry ZipInputStream ZipOutputStream)
            (org.joda.time DateTime)))
 
 (extend-protocol cheshire.generate/JSONable
   DateTime
   (to-json [t, ^JsonGenerator jg] (.writeString jg (str t))))
 
-(defn- translate-file-from-stream [reader, dataset, mapping, validity, ^String json-filename]
+(defn- translate-file-from-stream [stream, dataset, mapping, validity, ^String json-filename]
   "Read from reader, xml2json translate the content"
   (let [compressed-file (fs/create-target-file json-filename)]
     (with-open [output-stream (io/output-stream compressed-file)
                 zip (ZipOutputStream. output-stream)]
       (.putNextEntry zip (ZipEntry. json-filename))
-      (runner/translate dataset mapping validity reader zip)
+      (runner/translate dataset mapping validity stream zip)
       (.closeEntry zip))
     compressed-file))
 
-(defn- translate-file-from-zipentry [dataset, mapping, validity, ^ZipFile zipfile, ^ZipEntry entry]
+(defn- translate-file-from-zipentry [dataset, mapping, validity, stream, ^ZipEntry entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
-  (let [json-filename (fs/json-filename (.getName (File. (.getName entry))))
-        entry-stream (.getInputStream zipfile entry)]
+  (let [json-filename (fs/json-filename (.getName (File. (.getName entry))))]
     (log/debug "Going to transform zip entry" (.getName entry) "to" json-filename)
-    (let [resulting-file (translate-file-from-stream entry-stream dataset mapping validity json-filename)]
-      (.close entry-stream)
-      resulting-file)))
+    (translate-file-from-stream stream dataset mapping validity json-filename)))
 
-(defn- translate-from-zipfile [^File file, dataset, mapping, validity]
+(defn- translate-from-zipfile [stream dataset mapping validity]
   "Transforms entries in a zip file and returns a vector with the transformed files"
-  (with-open [zip (ZipFile. file)]
+  (with-open [zip (ZipInputStream. (io/input-stream stream))]
     (into [] (map (partial translate-file-from-zipentry
                            dataset
                            mapping
                            validity
                            zip) (zip/xml-entries zip)))))
 
-(defn translate-entire-file [zipped, ^File file, dataset, mapping, validity, original-filename]
+(defn translate-entire-file [zipped stream dataset mapping validity original-filename]
   "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if zipped
-    (translate-from-zipfile file dataset mapping validity)
+    (translate-from-zipfile stream dataset mapping validity)
     (let [json-filename (fs/json-filename original-filename)]
       (log/debug "Going to transform file" original-filename "to" json-filename)
-      (with-open [stream (FileInputStream. file)]
-        [(translate-file-from-stream stream dataset mapping validity json-filename)]))))
+      (with-open [buffered-stream (io/input-stream stream)]
+        [(translate-file-from-stream buffered-stream dataset mapping validity json-filename)]))))
 
 (defn extract-filename [headers, ^String uri]
   "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
@@ -74,23 +71,20 @@
 
 (defn download-file [uri]
   "Download uri and get the body as stream. Returns :error key if an error occured"
-  (let [{:keys [status body headers]} (http/get uri {:as :stream, :throw-exceptions false})]
-    (if (nil? status)
-      [:download-error (str "No response when trying to download: " uri)]
-      (if (< status 300)
-        (let [original-filename (extract-filename headers uri)
-              tmp (File/createTempFile "gml-to-featured" original-filename)]
-          (io/copy body tmp)
-          (.close body)
+  (do (log/debug "Downloading" uri)
+    (let [{:keys [status body headers]} (http/get uri {:as :stream, :throw-exceptions false})]
+      (if (nil? status)
+        [:download-error (str "No response when trying to download: " uri)]
+        (if (< status 300)
           {:zipped (re-find #"zip" (:content-type headers))
-           :file tmp
-           :original-filename original-filename})
-        {:download-error (str "No success: Got a statuscode " status " when downloading " uri)}))))
+           :stream body
+           :original-filename (extract-filename headers uri)}
+          {:download-error (str "No success: Got a statuscode " status " when downloading " uri)})))))
 
-(defn process-downloaded-xml2json-data [datasetname mapping validity zipped data-file original-filename]
+(defn process-downloaded-xml2json-data [datasetname mapping validity zipped stream original-filename]
   (log/info "Going to transform dataset" datasetname)
   (let [zipped-files (translate-entire-file zipped
-                                            data-file
+                                            stream
                                             datasetname
                                             mapping
                                             validity
@@ -114,9 +108,8 @@
         (swap! stats assoc-in [:processing worker-id] nil)
         (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
       (try
-        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result)
-                                                               (:original-filename result))]
-          (fs/safe-delete (:file result))
+        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result)
+                                                               (:stream result) (:original-filename result))]
           (swap! stats assoc-in [:processing worker-id] nil)
           (stats-on-callback callback-chan request process-result))
         (catch Exception e
