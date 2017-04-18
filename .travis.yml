@@ -4,8 +4,7 @@ sudo: required
 branches:
   only:
     - master
-    - /^release-.*$/
-    - docker_image
+    - /^gml-to-featured-.*$/
 
 jdk:
   - oraclejdk8
