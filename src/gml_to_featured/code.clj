@@ -15,6 +15,7 @@
 
 (def key->fn {:s/tag `[tag]
               :s/id-attr `[id-attr]
+              :s/fid-attr `[fid-attr]
               :s/inner-gml `[inner-gml]
               :s/boolean `[text boolean (function "boolean")]
               :s/int `[text #(. Integer parseInt %) (function "int")]
