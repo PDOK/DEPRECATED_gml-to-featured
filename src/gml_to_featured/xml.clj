@@ -28,6 +28,9 @@
 (defn id-attr [loc]
   (attr-with-name loc "id"))
 
+(defn fid-attr [loc]
+  (attr-with-name loc "fid"))
+
 (defn attr
   "Returns the xml attribute named attrname, of the xml node at location loc."
   ([attrname]     (fn [loc] (attr loc attrname)))
