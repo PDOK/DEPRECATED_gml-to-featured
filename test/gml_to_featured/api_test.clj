@@ -35,7 +35,7 @@
         tmp (File/createTempFile "fgtest" "json")
         _ (clojure.java.io/copy input tmp)
         validity (time-format/unparse built-in-formatter (time/now))
-        result (process-downloaded-xml2json-data "test" mapping validity false tmp "inputnaam.gml")
+        result (process-downloaded-xml2json-data "test" mapping validity :plain tmp "inputnaam.gml")
         _ (clojure.java.io/delete-file tmp)]
     ; check resulting content
     (is (= 1 (count (:json-files result))))
@@ -50,7 +50,7 @@
         tmp (File/createTempFile "fgtest" "zip")
         _ (clojure.java.io/copy input tmp)
         validity (time-format/unparse built-in-formatter (time/now))
-        result (process-downloaded-xml2json-data "test" mapping validity true tmp "bestuurlijkegrenzen.zip")
+        result (process-downloaded-xml2json-data "test" mapping validity :zip tmp "bestuurlijkegrenzen.zip")
         _ (clojure.java.io/delete-file tmp)]
     ; check resulting content
     (is (= 2 (count (:json-files result))))

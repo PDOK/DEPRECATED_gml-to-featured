@@ -22,7 +22,7 @@
            (com.fasterxml.jackson.core JsonGenerator)
            (java.io File FileInputStream)
            (java.net URI URISyntaxException)
-           (java.util.zip ZipEntry ZipFile ZipOutputStream)
+           (java.util.zip ZipEntry ZipFile ZipOutputStream GZIPInputStream)
            (org.joda.time DateTime)))
 
 (extend-protocol cheshire.generate/JSONable
@@ -57,13 +57,15 @@
                            validity
                            zip) (zip/xml-entries zip)))))
 
-(defn translate-entire-file [zipped, ^File file, dataset, mapping, validity, original-filename]
+(defn translate-entire-file [format, ^File file, dataset, mapping, validity, original-filename]
   "Transforms a file or zip-stream and returns a vector with the transformed files"
-  (if zipped
+  (if (= format :zip)
     (translate-from-zipfile file dataset mapping validity)
     (let [json-filename (fs/json-filename original-filename)]
       (log/debug "Going to transform file" original-filename "to" json-filename)
-      (with-open [stream (FileInputStream. file)]
+      (with-open [stream (condp = format
+                           :gzip (GZIPInputStream. (FileInputStream. file))
+                           :plain (FileInputStream. file))]
         [(translate-file-from-stream stream dataset mapping validity json-filename)]))))
 
 (defn extract-filename [headers, ^String uri]
@@ -82,14 +84,17 @@
               tmp (File/createTempFile "gml-to-featured" original-filename)]
           (io/copy body tmp)
           (.close body)
-          {:zipped (re-find #"zip" (:content-type headers))
+          {:format (cond
+                     (re-find #"zip" (:content-type headers)) :zip
+                     (-> original-filename .toLowerCase (.endsWith ".gz")) :gzip
+                     :else :plain)
            :file tmp
            :original-filename original-filename})
         {:download-error (str "No success: Got a statuscode " status " when downloading " uri)}))))
 
-(defn process-downloaded-xml2json-data [datasetname mapping validity zipped data-file original-filename]
+(defn process-downloaded-xml2json-data [datasetname mapping validity format data-file original-filename]
   (log/info "Going to transform dataset" datasetname)
-  (let [zipped-files (translate-entire-file zipped
+  (let [zipped-files (translate-entire-file format
                                             data-file
                                             datasetname
                                             mapping
@@ -114,7 +119,7 @@
         (swap! stats assoc-in [:processing worker-id] nil)
         (stats-on-callback callback-chan request (assoc request :error (:download-error result))))
       (try
-        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:zipped result) (:file result)
+        (let [process-result (process-downloaded-xml2json-data dataset mapping validity (:format result) (:file result)
                                                                (:original-filename result))]
           (fs/safe-delete (:file result))
           (swap! stats assoc-in [:processing worker-id] nil)
