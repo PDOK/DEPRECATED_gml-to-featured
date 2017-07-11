@@ -84,16 +84,17 @@
            (filter #(not= unknown %)))))
 
   (defn process [reader, ^OutputStream writer, dataset-name, validity]
-    (let [first? (ref true)
-          write-fn (fn [^String str] (.write writer (.getBytes str)))]
+    (let [write-fn (fn [^String str] (.write writer (.getBytes str)))
+          features (process-stream reader)
+          features (if validity
+                     (map #(assoc % :_validity validity) features)
+                     features)]
       (write-fn (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
-      (doseq [f (process-stream reader)]
-        (if-not @first?
-          (write-fn ",\n")
-          (dosync (ref-set first? false)))
-        (if validity
-          (write-fn (json/generate-string (assoc f :_validity validity)))
-          (write-fn (json/generate-string f))))
+      (->> features
+        (map json/generate-string)
+        (interpose ",\n")
+        (map write-fn)
+        (dorun))
       (write-fn "]}")))
 
   (defn parse-translator-tag [expr]
