@@ -29,37 +29,43 @@
   DateTime
   (to-json [t, ^JsonGenerator jg] (.writeString jg (str t))))
 
-(defn- translate-file-from-stream [reader, dataset, mapping, validity, ^String json-filename]
+(defn- translate-file-from-stream [reader, dataset, mapping, validity, json-filename-fn]
   "Read from reader, xml2json translate the content"
-  (let [compressed-file (fs/create-target-file json-filename)]
-    (with-open [output-stream (io/output-stream compressed-file)
-                zip (ZipOutputStream. output-stream)]
-      (.putNextEntry zip (ZipEntry. json-filename))
-      (runner/translate
-        dataset
-        mapping
-        validity
-        reader
-        #(doseq [fragment %]
-           (.write
-             zip
-             (.getBytes fragment "utf-8"))))
-      (.closeEntry zip))
-    compressed-file))
+  (let [compressed-files (volatile! [])]
+    (runner/translate
+      dataset
+      mapping
+      validity
+      reader
+      #(doseq [file %]
+         (let [json-filename ^String (json-filename-fn)
+               compressed-file (fs/create-target-file json-filename)]
+           (with-open [output-stream (io/output-stream compressed-file)
+                       zip (ZipOutputStream. output-stream)]
+             (.putNextEntry zip (ZipEntry. json-filename))
+             (let [only-flush (proxy [java.io.FilterOutputStream] [zip] (close [] (.flush this)))]
+               (with-open [writer (io/writer only-flush :encoding "utf-8")]
+                 (doseq [fragment file]
+                   (.write writer fragment))))
+             (.closeEntry zip)
+             (vswap! compressed-files conj compressed-file)))))
+    @compressed-files))
 
 (defn- translate-file-from-zipentry [dataset, mapping, validity, ^ZipFile zipfile, ^ZipEntry entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
-  (let [json-filename (fs/json-filename (.getName (File. (.getName entry))))
+  (let [json-filename-fn #(let [json-filename (fs/json-filename (.getName (File. (.getName entry))))]
+                            (log/debug "Saving result as" json-filename)
+                            json-filename)
         entry-stream (.getInputStream zipfile entry)]
-    (log/debug "Going to transform zip entry" (.getName entry) "to" json-filename)
-    (let [resulting-file (translate-file-from-stream entry-stream dataset mapping validity json-filename)]
+    (log/debug "Going to transform zip entry" (.getName entry))
+    (let [resulting-files (translate-file-from-stream entry-stream dataset mapping validity json-filename-fn)]
       (.close entry-stream)
-      resulting-file)))
+      resulting-files)))
 
 (defn- translate-from-zipfile [^File file, dataset, mapping, validity]
   "Transforms entries in a zip file and returns a vector with the transformed files"
   (with-open [zip (ZipFile. file)]
-    (into [] (map (partial translate-file-from-zipentry
+    (into [] (mapcat (partial translate-file-from-zipentry
                            dataset
                            mapping
                            validity
@@ -69,12 +75,14 @@
   "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if (= format :zip)
     (translate-from-zipfile file dataset mapping validity)
-    (let [json-filename (fs/json-filename original-filename)]
-      (log/debug "Going to transform file" original-filename "to" json-filename)
+    (let [json-filename-fn #(let [json-filename (fs/json-filename original-filename)]
+                              (log/debug "Saving result as" json-filename)
+                              json-filename)]
+      (log/debug "Going to transform file" original-filename)
       (with-open [stream (condp = format
                            :gzip (GZIPInputStream. (FileInputStream. file))
                            :plain (FileInputStream. file))]
-        [(translate-file-from-stream stream dataset mapping validity json-filename)]))))
+        (translate-file-from-stream stream dataset mapping validity json-filename-fn)))))
 
 (defn extract-filename [headers, ^String uri]
   "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
