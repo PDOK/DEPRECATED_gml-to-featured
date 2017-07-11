@@ -83,19 +83,18 @@
            (map log-progress)
            (filter #(not= unknown %)))))
 
-  (defn process [reader, ^OutputStream writer, dataset-name, validity]
-    (let [write-fn (fn [^String str] (.write writer (.getBytes str)))
-          features (process-stream reader)
+  (defn process [reader, dataset-name, validity]
+    (let [features (process-stream reader)
           features (if validity
                      (map #(assoc % :_validity validity) features)
                      features)]
-      (write-fn (str "{\"dataset\":\"" dataset-name "\",\n\"features\":["))
-      (->> features
-        (map json/generate-string)
-        (interpose ",\n")
-        (map write-fn)
-        (dorun))
-      (write-fn "]}")))
+      (concat
+        (cons
+          (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[")
+          (->> features
+            (map json/generate-string)
+            (interpose ",\n")))
+        (list "]}"))))
 
   (defn parse-translator-tag [expr]
     (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))
@@ -134,7 +133,7 @@
       (and (.isStartElement e)
            (= element-name (keyword (.getLocalPart (.getName (.asStartElement e))))))))
 
-  (defn translate [dataset edn-config validity reader writer]
+  (defn translate [dataset edn-config validity reader writer-fn]
     (let [config (parse-config edn-config)
           translators (if-let [t (:config/translators config)] t config)
           sequence-element (:config/sequence-element config)
@@ -159,12 +158,20 @@
                 *feature-identifier* feature-identifier
                 *date-formatter* date-formatter
                 *feature-selector* feature-selector]
-        (process reader writer dataset validity))))
+        (writer-fn (process reader dataset validity)))))
 
   (defn translate-filesystem [dataset edn-config-location validity in-file out-file]
     (with-open [reader (clojure.java.io/input-stream in-file),
                 writer (clojure.java.io/output-stream out-file)]
-      (translate dataset (slurp edn-config-location) validity reader writer)))
+      (translate
+        dataset
+        (slurp edn-config-location)
+        validity
+        reader
+        #(doseq [fragment %]
+           (.write
+             writer
+             (.getBytes fragment "utf-8"))))))
 
   (defn error-msg [errors]
     (str "The following errors occurred while parsing your command:\n\n"

@@ -35,7 +35,15 @@
     (with-open [output-stream (io/output-stream compressed-file)
                 zip (ZipOutputStream. output-stream)]
       (.putNextEntry zip (ZipEntry. json-filename))
-      (runner/translate dataset mapping validity reader zip)
+      (runner/translate
+        dataset
+        mapping
+        validity
+        reader
+        #(doseq [fragment %]
+           (.write
+             zip
+             (.getBytes fragment "utf-8"))))
       (.closeEntry zip))
     compressed-file))
 
