@@ -83,20 +83,42 @@
            (mapcat member->map)
            (map log-progress)
            (filter #(not= unknown %)))))
+  
+  (defn- partition-by-size [max-size coll]
+    (letfn [(partition-id [current-id init-size coll]
+              (when-let [head (first coll)]
+                (let [item-size (count head)
+                      [current-size current-id] (if (< (- max-size item-size) init-size) 
+                                                    [item-size (inc current-id)] 
+                                                    [(+ init-size item-size) current-id])]
+                  (cons
+                    current-id
+                    (lazy-seq
+                      (partition-id
+                        current-id
+                        current-size
+                        (next coll)))))))]
+      (->> (map
+             vector
+             (partition-id 0 0 coll)
+             coll)
+        (partition-by first)
+        (map (partial map second)))))
 
   (defn process [reader, dataset-name, validity]
     (let [features (process-stream reader)
           features (if validity
                      (map #(assoc % :_validity validity) features)
                      features)]
-      (list
-        (concat
-          (cons
-            (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[")
-            (->> features
-              (map json/generate-string)
-              (interpose ",\n")))
-          (list "]}")))))
+      (->> features
+        (map json/generate-string)
+        (partition-by-size 50000000)
+        (map
+          #(concat
+            (cons
+              (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[")
+              (interpose ",\n" %))
+            (list "]}"))))))
 
   (defn parse-translator-tag [expr]
     (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))
