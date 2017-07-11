@@ -1,6 +1,7 @@
 (ns gml-to-featured.runner
   (:require [gml-to-featured.xml :as xml]
             [gml-to-featured.code :as code]
+            [clojure.java.io :as io]
             [clojure.edn :as edn]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
@@ -88,13 +89,14 @@
           features (if validity
                      (map #(assoc % :_validity validity) features)
                      features)]
-      (concat
-        (cons
-          (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[")
-          (->> features
-            (map json/generate-string)
-            (interpose ",\n")))
-        (list "]}"))))
+      (list
+        (concat
+          (cons
+            (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[")
+            (->> features
+              (map json/generate-string)
+              (interpose ",\n")))
+          (list "]}")))))
 
   (defn parse-translator-tag [expr]
     (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))
@@ -160,18 +162,18 @@
                 *feature-selector* feature-selector]
         (writer-fn (process reader dataset validity)))))
 
-  (defn translate-filesystem [dataset edn-config-location validity in-file out-file]
-    (with-open [reader (clojure.java.io/input-stream in-file),
-                writer (clojure.java.io/output-stream out-file)]
+  (defn translate-filesystem [dataset edn-config-location validity in-file out-file-prefix]
+    (with-open [reader (io/input-stream in-file)]
       (translate
         dataset
         (slurp edn-config-location)
         validity
         reader
-        #(doseq [fragment %]
-           (.write
-             writer
-             (.getBytes fragment "utf-8"))))))
+        #(doseq [[idx file] (map-indexed vector %)]
+           (let [out-file (str out-file-prefix "-" (->> idx inc (format "%04d")) ".json")]
+             (with-open [writer (io/writer out-file :encoding "utf-8")]
+               (doseq [fragment file]
+                 (.write writer fragment))))))))
 
   (defn error-msg [errors]
     (str "The following errors occurred while parsing your command:\n\n"
