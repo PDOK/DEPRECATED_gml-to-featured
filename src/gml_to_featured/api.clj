@@ -29,7 +29,7 @@
   DateTime
   (to-json [t, ^JsonGenerator jg] (.writeString jg (str t))))
 
-(defn- translate-file-from-stream [reader, dataset, mapping, validity, json-filename-fn]
+(defn- translate-file-from-stream [reader, dataset, mapping, validity, original-filename]
   "Read from reader, xml2json translate the content"
   (let [compressed-files (volatile! [])]
     (runner/translate
@@ -38,8 +38,9 @@
       validity
       reader
       #(doseq [file %]
-         (let [json-filename ^String (json-filename-fn)
+         (let [json-filename ^String (fs/json-filename original-filename)
                compressed-file (fs/create-target-file json-filename)]
+           (log/debug "Saving result as" json-filename)
            (with-open [output-stream (io/output-stream compressed-file)
                        zip (ZipOutputStream. output-stream)]
              (.putNextEntry zip (ZipEntry. json-filename))
@@ -53,12 +54,10 @@
 
 (defn- translate-file-from-zipentry [dataset, mapping, validity, ^ZipFile zipfile, ^ZipEntry entry]
   "Transform a single entry in a zip-file. Returns the location where the result is saved on the filesystem"
-  (let [json-filename-fn #(let [json-filename (fs/json-filename (.getName (File. (.getName entry))))]
-                            (log/debug "Saving result as" json-filename)
-                            json-filename)
+  (let [original-filename (.getName (File. (.getName entry)))
         entry-stream (.getInputStream zipfile entry)]
     (log/debug "Going to transform zip entry" (.getName entry))
-    (let [resulting-files (translate-file-from-stream entry-stream dataset mapping validity json-filename-fn)]
+    (let [resulting-files (translate-file-from-stream entry-stream dataset mapping validity original-filename)]
       (.close entry-stream)
       resulting-files)))
 
@@ -75,14 +74,12 @@
   "Transforms a file or zip-stream and returns a vector with the transformed files"
   (if (= format :zip)
     (translate-from-zipfile file dataset mapping validity)
-    (let [json-filename-fn #(let [json-filename (fs/json-filename original-filename)]
-                              (log/debug "Saving result as" json-filename)
-                              json-filename)]
+    (do
       (log/debug "Going to transform file" original-filename)
       (with-open [stream (condp = format
                            :gzip (GZIPInputStream. (FileInputStream. file))
                            :plain (FileInputStream. file))]
-        (translate-file-from-stream stream dataset mapping validity json-filename-fn)))))
+        (translate-file-from-stream stream dataset mapping validity original-filename)))))
 
 (defn extract-filename [headers, ^String uri]
   "Extract the original filename from the Content-Disposition header, or from the URI if unavailable"
@@ -120,6 +117,7 @@
     {:json-files (map #(config/create-url (str "api/get/" (.getName %))) zipped-files)}))
 
 (defn stats-on-callback [callback-chan request stats]
+  (log/debug "Callback stats:" stats)
   (when (:callback request)
     (go (>! callback-chan [(:callback request) stats]))))
 
