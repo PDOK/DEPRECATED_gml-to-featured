@@ -2,7 +2,7 @@
   (:require [gml-to-featured.runner :refer :all]
             [gml-to-featured.code :refer :all]
             [clojure.test :refer :all])
-  (:import (java.io ByteArrayOutputStream)))
+  (:import (java.io StringWriter)))
 
 (defn translate-resource [resource element translator]
   (with-open [in (clojure.java.io/input-stream (clojure.java.io/resource resource))]
@@ -73,9 +73,16 @@
 (deftest test-translate
   (testing "translate"
     (with-open [in (clojure.java.io/input-stream (clojure.java.io/resource "nested.xml"))
-                out (ByteArrayOutputStream.)]
+                out (StringWriter.)]
       (binding [*sequence-selector* identity]
-        (translate "dataset-1" (slurp "dev-resources/nested-config.edn") "2016-01-01" in out))
+        (translate
+          "dataset-1"
+          (slurp "dev-resources/nested-config.edn")
+          "2016-01-01"
+          in
+          #(doseq [file %]
+             (doseq [fragment file]
+               (.write out fragment)))))
       (let [result (.toString out)]
         (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))
         (is (= true (boolean (re-find #"\"attr-k\":\"foo\"" result))))
