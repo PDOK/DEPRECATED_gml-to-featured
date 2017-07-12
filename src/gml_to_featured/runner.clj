@@ -1,6 +1,7 @@
 (ns gml-to-featured.runner
   (:require [gml-to-featured.xml :as xml]
             [gml-to-featured.code :as code]
+            [gml-to-featured.config :as config]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
             [cheshire.core :as json]
@@ -112,7 +113,7 @@
                      features)]
       (->> features
         (map json/generate-string)
-        (partition-by-size 50000000)
+        (partition-by-size config/max-json-size)
         (map
           #(concat
             (cons
