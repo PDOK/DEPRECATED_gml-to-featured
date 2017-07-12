@@ -51,3 +51,6 @@
 
 (def cleanup-threshold
   (read-string (or (env :cleanup-threshold) "5")))
+
+(def max-json-size
+  (read-string (or (env :max-json-size) "50000000")))
