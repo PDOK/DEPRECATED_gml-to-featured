@@ -84,44 +84,52 @@
            (mapcat member->map)
            (map log-progress)
            (filter #(not= unknown %)))))
-  
-  (defn- partition-by-size [max-size coll]
-    (letfn [(partition-id [current-id init-size coll]
-              (when-let [head (first coll)]
-                (let [item-size (count head)
-                      [current-size current-id] (if (< (- max-size item-size) init-size) 
-                                                    [item-size (inc current-id)] 
-                                                    [(+ init-size item-size) current-id])]
-                  (cons
-                    current-id
-                    (lazy-seq
-                      (partition-id
-                        current-id
-                        current-size
-                        (next coll)))))))]
-      (->> (map
-             vector
-             (partition-id 0 0 coll)
-             coll)
-        (partition-by first)
-        (map (partial map second)))))
 
-  (defn process [reader, dataset-name, validity]
+  (defn process [reader, dataset-name, validity, file-fn, fragment-fn, close-fn]
     (let [features (process-stream reader)
           features (if validity
                      (map #(assoc % :_validity validity) features)
-                     features)]
-      (->> features
-        (map json/generate-string)
-        (map #(.getBytes ^String % "utf-8"))
-        (partition-by-size config/max-json-size)
-        (map
-          #(concat
-            (cons
-              (-> (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[") (.getBytes "utf-8"))
-              (interpose (.getBytes ",\n" "utf-8") %))
-            (-> "]}" (.getBytes "utf-8") list))))))
-
+                     features)
+          features (->> features
+                     (map json/generate-string)
+                     (map #(.getBytes ^String % "utf-8")))
+          separator (.getBytes ",\n" "utf-8")
+          footer (.getBytes "]}" "utf-8")
+          write-features (fn [file total-size [head & tail]]
+                           (when head
+                             (let [item-size (count head)
+                                   current-size (+ total-size item-size)]
+                               (if (> current-size config/max-json-size)
+                                 (cons head tail)
+                                 (do
+                                   (fragment-fn file separator)
+                                   (fragment-fn file head)
+                                   (recur
+                                     file
+                                     current-size
+                                     tail))))))
+          write-file (fn [file [head & tail]]
+                       (do
+                         (fragment-fn file (->
+                                             (str
+                                               "{\"dataset\":\""
+                                               dataset-name
+                                               "\",\n\"features\":[")
+                                             (.getBytes "utf-8")))
+                         (fragment-fn file head)
+                         (let [retval (write-features file (count head) tail)]
+                           (fragment-fn file footer)
+                           (close-fn file)
+                           retval)))]
+      (loop [idx 0
+             features features]
+        (when (first features)
+          (recur
+            (inc idx)
+            (write-file
+              (file-fn idx)
+              features))))))
+      
   (defn parse-translator-tag [expr]
     (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))
 
@@ -159,7 +167,7 @@
       (and (.isStartElement e)
            (= element-name (keyword (.getLocalPart (.getName (.asStartElement e))))))))
 
-  (defn translate [dataset edn-config validity reader writer-fn]
+  (defn translate [dataset edn-config validity reader file-fn fragment-fn close-fn]
     (let [config (parse-config edn-config)
           translators (if-let [t (:config/translators config)] t config)
           sequence-element (:config/sequence-element config)
@@ -184,7 +192,7 @@
                 *feature-identifier* feature-identifier
                 *date-formatter* date-formatter
                 *feature-selector* feature-selector]
-        (writer-fn (process reader dataset validity)))))
+        (process reader dataset validity file-fn fragment-fn close-fn))))
 
   (defn translate-filesystem [dataset edn-config-location validity in-file out-file-prefix]
     (with-open [reader (io/input-stream in-file)]
@@ -193,11 +201,12 @@
         (slurp edn-config-location)
         validity
         reader
-        #(doseq [[idx file] (map-indexed vector %)]
-           (let [out-file (str out-file-prefix "-" (->> idx inc (format "%04d")) ".json")]
-             (with-open [output-stream (io/output-stream out-file :encoding "utf-8")]
-               (doseq [fragment file]
-                 (.write output-stream ^bytes fragment))))))))
+        (fn [idx]
+          (let [out-file (str out-file-prefix "-" (->> idx inc (format "%04d")) ".json")]
+            (io/output-stream out-file :encoding "utf-8")))
+        (fn [output-stream fragment]
+          (.write ^OutputStream output-stream ^bytes fragment))
+        (fn [output-stream] (.close output-stream)))))
 
   (defn error-msg [errors]
     (str "The following errors occurred while parsing your command:\n\n"

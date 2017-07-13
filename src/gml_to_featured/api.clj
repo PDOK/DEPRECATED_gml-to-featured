@@ -37,17 +37,20 @@
       mapping
       validity
       reader
-      #(doseq [file %]
-         (let [json-filename ^String (fs/json-filename original-filename)
-               compressed-file (fs/create-target-file json-filename)]
-           (log/debug "Saving result as" json-filename)
-           (with-open [output-stream (io/output-stream compressed-file)
-                       zip (ZipOutputStream. output-stream)]
-             (.putNextEntry zip (ZipEntry. json-filename))
-             (doseq [fragment file]
-               (.write zip ^bytes fragment))
-             (.closeEntry zip)
-             (vswap! compressed-files conj compressed-file)))))
+      (fn [idx]
+        (let [json-filename ^String (fs/json-filename original-filename)
+              compressed-file (fs/create-target-file json-filename)
+              output-stream (io/output-stream compressed-file)
+              zip (ZipOutputStream. output-stream)]
+           (log/debug "Saving file result as" json-filename)
+           (.putNextEntry zip (ZipEntry. json-filename))
+           [compressed-file zip]))
+      (fn [[compressed-file zip] fragment]
+        (.write zip ^bytes fragment))
+      (fn [[compressed-file zip]]
+        (.closeEntry zip)
+        (.close zip)
+        (vswap! compressed-files conj compressed-file)))
     @compressed-files))
 
 (defn- translate-file-from-zipentry [dataset, mapping, validity, ^ZipFile zipfile, ^ZipEntry entry]

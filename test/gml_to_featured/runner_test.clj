@@ -80,9 +80,10 @@
           (slurp "dev-resources/nested-config.edn")
           "2016-01-01"
           in
-          #(doseq [file %]
-             (doseq [fragment file]
-               (.write out ^bytes fragment)))))
+          (fn [idx])
+          (fn [_ fragment]
+            (.write out ^bytes fragment))
+          (fn [_])))
       (let [result (.toString out)]
         (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))
         (is (= true (boolean (re-find #"\"attr-k\":\"foo\"" result))))
