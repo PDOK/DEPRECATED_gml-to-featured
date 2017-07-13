@@ -44,10 +44,8 @@
            (with-open [output-stream (io/output-stream compressed-file)
                        zip (ZipOutputStream. output-stream)]
              (.putNextEntry zip (ZipEntry. json-filename))
-             (let [only-flush (proxy [java.io.FilterOutputStream] [zip] (close [] (.flush this)))]
-               (with-open [writer (io/writer only-flush :encoding "utf-8")]
-                 (doseq [fragment file]
-                   (.write writer fragment))))
+             (doseq [fragment file]
+               (.write zip ^bytes fragment))
              (.closeEntry zip)
              (vswap! compressed-files conj compressed-file)))))
     @compressed-files))

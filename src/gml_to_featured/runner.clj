@@ -113,13 +113,14 @@
                      features)]
       (->> features
         (map json/generate-string)
+        (map #(.getBytes ^String % "utf-8"))
         (partition-by-size config/max-json-size)
         (map
           #(concat
             (cons
-              (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[")
-              (interpose ",\n" %))
-            (list "]}"))))))
+              (-> (str "{\"dataset\":\"" dataset-name "\",\n\"features\":[") (.getBytes "utf-8"))
+              (interpose (.getBytes ",\n" "utf-8") %))
+            (-> "]}" (.getBytes "utf-8") list))))))
 
   (defn parse-translator-tag [expr]
     (eval (code/translator (:type expr) (:mapping expr) (or (:arrays expr) (constantly false)))))
@@ -194,9 +195,9 @@
         reader
         #(doseq [[idx file] (map-indexed vector %)]
            (let [out-file (str out-file-prefix "-" (->> idx inc (format "%04d")) ".json")]
-             (with-open [writer (io/writer out-file :encoding "utf-8")]
+             (with-open [output-stream (io/output-stream out-file :encoding "utf-8")]
                (doseq [fragment file]
-                 (.write writer fragment))))))))
+                 (.write output-stream ^bytes fragment))))))))
 
   (defn error-msg [errors]
     (str "The following errors occurred while parsing your command:\n\n"

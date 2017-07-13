@@ -2,7 +2,7 @@
   (:require [gml-to-featured.runner :refer :all]
             [gml-to-featured.code :refer :all]
             [clojure.test :refer :all])
-  (:import (java.io StringWriter)))
+  (:import (java.io ByteArrayOutputStream)))
 
 (defn translate-resource [resource element translator]
   (with-open [in (clojure.java.io/input-stream (clojure.java.io/resource resource))]
@@ -73,7 +73,7 @@
 (deftest test-translate
   (testing "translate"
     (with-open [in (clojure.java.io/input-stream (clojure.java.io/resource "nested.xml"))
-                out (StringWriter.)]
+                out (ByteArrayOutputStream.)]
       (binding [*sequence-selector* identity]
         (translate
           "dataset-1"
@@ -82,7 +82,7 @@
           in
           #(doseq [file %]
              (doseq [fragment file]
-               (.write out fragment)))))
+               (.write out ^bytes fragment)))))
       (let [result (.toString out)]
         (is (= true (boolean (re-find #"\"dataset\":\"dataset-1\"" result))))
         (is (= true (boolean (re-find #"\"attr-k\":\"foo\"" result))))
