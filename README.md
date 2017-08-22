@@ -7,6 +7,22 @@ GML-to-Featured is one of the input applications in the PDOK ETL landscape.
 It transforms GML/XML input to JSON files that can be processed by Featured (<https://github.com/PDOK/featured>).
 Apart from the GML/XML, GML-to-Featured's input is a mapping file that describes the transformation.
 
+## Usage
+
+GML-to-Featured supports a server mode and a command-line mode.
+To run it locally, the following command can be used to start it in server mode:
+
+    $ lein ring server-headless
+
+To use the command line locally, use:
+
+    $ lein run [args]
+
+or
+
+    $ lein uberjar
+    $ java -jar gml-to-featured-1.0.6-standalone.jar [args]
+
 ## Examples
 
 ### REST API
@@ -220,12 +236,6 @@ This is used in the same way as the parameter `:config/feature-identifier`.
 ### `:config/translators`
 Contains the different translator configurations that can be used during the transformation process.
 Multiple translators can be supplied.
-
-## Building
-```lein build```
-
-## Testing
-```lein test```
 
 ## License
 
