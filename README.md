@@ -12,7 +12,7 @@ Apart from the GML/XML, GML-to-Featured's input is a mapping file that describes
 ### REST API
 
 #### Starting a run
-Do a POST to api/xml2json with the following body.
+Do a POST to `api/xml2json` with the following body.
 Note this mapping is stored in the catalogus.
 ```json
 {
@@ -116,15 +116,16 @@ Files generated through the command line are stored in the project root folder, 
 
 The mapping used for the GML/XML-to-JSON transformation uses the [EDN](https://github.com/edn-format/edn) data format.
 The mapping consists of four configuration parameters:
-. :config/sequence-element
-. :config/feature-identifier
-. :config/feature-selector
-. :config/translators
 
-### :config/sequence-element
+- `:config/sequence-element`
+- `:config/feature-identifier`
+- `:config/feature-selector`
+- `:config/translators`
+
+### `:config/sequence-element`
 Specifies the GML/XML element that contains the sequence of features that need to be processed.
-In the example below, the sequence-element would be :FeatureCollection, because the element gml:FeatureCollection
-contains the desired features of type gml:featureMember.
+In the example below, the `sequence-element` would be `:FeatureCollection`, because the element `gml:FeatureCollection`
+contains the desired features of type `gml:featureMember`.
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <gml:FeatureCollection
@@ -152,8 +153,8 @@ contains the desired features of type gml:featureMember.
 </gml:FeatureCollection>
 ```
 
-In the example below, the sequence-element would be :GemeenteWoonplaatsRelatieProduct, because the element
-gml:GemeenteWoonplaatsRelatieProduct contains the desired features of type gml:GemeenteWoonplaatsRelatie.
+In the example below, the `sequence-element` would be `:GemeenteWoonplaatsRelatieProduct`, because the element
+`gml:GemeenteWoonplaatsRelatieProduct` contains the desired features of type `gml:GemeenteWoonplaatsRelatie`.
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <gwr-bestand:BAG-GWR-Deelbestand-LVC
@@ -195,28 +196,28 @@ gml:GemeenteWoonplaatsRelatieProduct contains the desired features of type gml:G
 </gwr-bestand:BAG-GWR-Deelbestand-LVC>
 ```
 
-### :config/feature-identifier
+### `:config/feature-identifier`
 This parameter is optional.
 When the source GML/XML file contains the features to map at a 'lower' level in the document, this parameter can be set
-(together with the :config/feature-selector) so the translator mapping is applied at the right level.
-Currently, the only value permitted is '#xml2json/comp [first :content]'.
-This value 'first' is interpreted as the Clojure function clojure.core/first.
+(together with the `:config/feature-selector`) so the translator mapping is applied at the right level.
+Currently, the only value permitted is `#xml2json/comp [first :content]`.
+This value 'first' is interpreted as the Clojure function `clojure.core/first`.
 When the source document is read, a tree map is constructed from the level configured in the parameter
-:config/sequence-element.
+`:config/sequence-element`.
 By default, the features one level deeper are read by the application, so the application will search a translator for
-:featureMember (when taking the bestuurlijkegrenzen REST API example).
-To make sure the right translator is selected, we need to go to the right document level :Landsgrens.
-To achieve that action, the configuration parameter :config/feature-identifier contains the hint '#xml2json/comp [first
-:content]'.
+`:featureMember` (when taking the bestuurlijkegrenzen REST API example).
+To make sure the right translator is selected, we need to go to the right document level `:Landsgrens`.
+To achieve that action, the configuration parameter `:config/feature-identifier` contains the hint `#xml2json/comp
+[first :content]`.
 
-### :config/feature-selector
+### `:config/feature-selector`
 This parameter is optional.
-Like the :config/feature-identifier, this parameter can be set so the 'right' feature is selected on which the
+Like the `:config/feature-identifier`, this parameter can be set so the 'right' feature is selected on which the
 translation is performed.
-Currently, the only value permitted is '#xml2json/comp [first :content]'.
-This is used in the same way as the parameter :config/feature-identifier.
+Currently, the only value permitted is `#xml2json/comp [first :content]`.
+This is used in the same way as the parameter `:config/feature-identifier`.
 
-### :config/translators
+### `:config/translators`
 Contains the different translator configurations that can be used during the transformation process.
 Multiple translators can be supplied.
 
