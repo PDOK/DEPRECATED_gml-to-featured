@@ -1,3 +1,5 @@
+# DEPRECATED
+
 # GML-to-Featured [![Build Status](https://travis-ci.org/PDOK/gml-to-featured.svg?branch=master)](https://travis-ci.org/PDOK/gml-to-featured)
 
 Open-source GML/XML to JSON transformation software for Featured, developed by Publieke Dienstverlening op de Kaart
